@@ -1,0 +1,1 @@
+{"ts":"2026-05-18T15:24:19.841Z","source":"tier2","error":"openrouter 404 [deepseek/deepseek-chat-v3-0324:free]: {\"error\":{\"message\":\"No endpoints found for deepseek/deepseek-chat-v3-0324:free.\",\"code\":404},\"user_id\":\"user_3DNvmOpWvc31hqSxT5LS8F45TAB\"}","context":{"prompt":"Summarize GC-MS run results for compound enrichment"}}

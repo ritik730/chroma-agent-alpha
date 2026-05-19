@@ -1,0 +1,45 @@
+model_list:
+  # ── T1: Scout — Gemini Flash Lite (FASTEST: ~0.4-0.7s) ───────────
+  - model_name: "claude-t1"
+    litellm_params:
+      model: "openrouter/google/gemini-2.5-flash-lite"
+      api_key: "os.environ/OPENROUTER_API_KEY"
+      supports_function_calling: true
+      max_tokens: 4096
+      temperature: 0.3
+      request_timeout: 30
+
+  # ── T2: Analyst — DeepSeek V4 Flash FREE (1M ctx, ₹0) ───────────
+  - model_name: "claude-t2"
+    litellm_params:
+      model: "openrouter/deepseek/deepseek-v4-flash:free"
+      api_key: "os.environ/OPENROUTER_API_KEY"
+      supports_function_calling: true
+      max_tokens: 8192
+      temperature: 0.3
+      request_timeout: 60
+
+  # ── T3: Architect — DeepSeek V4 Flash PAID (fast, no timeout) ───
+  - model_name: "claude-t3"
+    litellm_params:
+      model: "openrouter/deepseek/deepseek-v4-flash"
+      api_key: "os.environ/OPENROUTER_API_KEY"
+      supports_function_calling: true
+      max_tokens: 16384
+      temperature: 0.2
+      request_timeout: 120
+
+litellm_settings:
+  drop_params: true
+  num_retries: 2
+  request_timeout: 120
+  set_verbose: false
+
+router_settings:
+  routing_strategy: "simple-shuffle"
+  num_retries: 2
+  retry_after: 5
+  allowed_fails: 1
+  fallbacks:
+    - {"claude-t1": ["claude-t2"]}
+    - {"claude-t2": ["claude-t3"]}
