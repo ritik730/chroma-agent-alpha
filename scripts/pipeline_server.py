@@ -106,17 +106,20 @@ def run_parse_cdf(req: ParseRequest):
             "stdout": result.stdout[-500:],
         })
 
-    # parse_cdf.py prints JSON to stdout
-    try:
-        data = json.loads(result.stdout)
-    except json.JSONDecodeError:
+    # parse_cdf.py writes JSON to processed/{sample_id}.json and prints summary to stdout
+    if not output_file.exists():
         raise HTTPException(status_code=500, detail={
-            "error": "parse_cdf.py returned non-JSON output",
-            "stdout": result.stdout[:500],
+            "error": f"parse_cdf.py ran but did not produce {output_file.name}",
+            "stdout": result.stdout[-500:],
+            "stderr": result.stderr[-500:],
         })
 
-    # Save to processed/
-    output_file.write_text(json.dumps(data, indent=2))
+    try:
+        data = json.loads(output_file.read_text())
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail={
+            "error": f"{output_file.name} is not valid JSON",
+        })
 
     return {
         "status": "ok",
