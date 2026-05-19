@@ -4,27 +4,35 @@ echo ========================================
 echo  CHROMA-AGENT-ALPHA // TRI-STACK v5
 echo ========================================
 echo.
-echo [1/2] Starting LiteLLM proxy on port 4000...
+echo [1/3] Starting LiteLLM proxy on port 4000...
 start "LiteLLM Proxy" "C:\chroma-agent-alpha\venv\Scripts\litellm.exe" --config C:\chroma-agent-alpha\litellm_config.yaml
-timeout /t 5 /nobreak >nul
-echo [OK] LiteLLM starting on port 4000
+timeout /t 4 /nobreak >nul
 
-echo [2/2] Wiring Claude Code to LiteLLM...
+echo [2/3] Starting Pipeline Server on port 8001...
+start "Pipeline Server" "C:\chroma-agent-alpha\venv\Scripts\python.exe" C:\chroma-agent-alpha\scripts\pipeline_server.py
+timeout /t 3 /nobreak >nul
+
+echo [3/3] Wiring Claude Code to LiteLLM...
 set ANTHROPIC_BASE_URL=http://localhost:4000
 set ANTHROPIC_API_KEY=sk-litellm-1234
 set ANTHROPIC_AUTH_TOKEN=
 echo.
 echo ========================================
 echo  STACK READY:
-echo    T1 = gemini-2.5-flash-lite  (scout, ~Rs1/100 calls)
+echo    T1 = gemini-2.5-flash-lite  (scout)
 echo    T2 = deepseek-v4-flash:free (analyst, FREE)
-echo    T3 = deepseek-v4-flash      (architect, ~Rs0.9/call)
-echo    AG = Claude via proxy :8080 (manual only)
+echo    T3 = deepseek-v4-flash      (architect)
+echo    Pipeline Server: http://localhost:8001
+echo    Pipeline Docs:   http://localhost:8001/docs
+echo    n8n workflow:    n8n\chroma_workflow.json
 echo ========================================
 echo.
 echo  Switch model in Claude Code:
 echo    /model claude-t1    T1 Scout
 echo    /model claude-t2    T2 Analyst (DEFAULT)
 echo    /model claude-t3    T3 Architect
+echo.
+echo  n8n: run 'n8n start' in a separate window
+echo  then import n8n\chroma_workflow.json
 echo.
 claude --model claude-t2

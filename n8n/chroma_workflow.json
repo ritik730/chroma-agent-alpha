@@ -1,0 +1,178 @@
+{
+  "name": "CHROMA-AGENT-ALPHA Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "C:\\chroma-agent-alpha\\raw_data",
+        "events": ["created"],
+        "options": {}
+      },
+      "id": "node-file-trigger",
+      "name": "Watch raw_data folder",
+      "type": "n8n-nodes-base.localFileTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://localhost:8001/health",
+        "options": {
+          "timeout": 5000,
+          "response": {"response": {"responseFormat": "json"}}
+        }
+      },
+      "id": "node-health-check",
+      "name": "Health Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {"caseSensitive": true},
+          "conditions": [
+            {
+              "id": "check-status",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "ok",
+              "operator": {"type": "string", "operation": "equals"}
+            }
+          ]
+        }
+      },
+      "id": "node-check-health",
+      "name": "Server OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8001/run/parse_cdf",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "Content-Type", "value": "application/json"}]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {"name": "file", "value": "={{ $('Watch raw_data folder').item.json.fileName }}"}
+          ]
+        },
+        "options": {
+          "timeout": 120000,
+          "response": {"response": {"responseFormat": "json"}}
+        }
+      },
+      "id": "node-parse-cdf",
+      "name": "Parse CDF → Peaks",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 220]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "check-parse-status",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "ok",
+              "operator": {"type": "string", "operation": "equals"}
+            }
+          ]
+        }
+      },
+      "id": "node-parse-ok",
+      "name": "Parse OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8001/run/enrich",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "Content-Type", "value": "application/json"}]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {"name": "sample_id", "value": "={{ $('Parse CDF → Peaks').item.json.sample_id }}"},
+            {"name": "peaks", "value": "={{ JSON.stringify($('Parse CDF → Peaks').item.json.data.peaks) }}"},
+            {"name": "context", "value": "GC-MS chromatography analysis, ethanol/solvent mix"}
+          ]
+        },
+        "options": {
+          "timeout": 90000,
+          "response": {"response": {"responseFormat": "json"}}
+        }
+      },
+      "id": "node-enrich",
+      "name": "T2 Enrichment (DeepSeek free)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 140]
+    },
+    {
+      "parameters": {
+        "content": "=## ✅ Pipeline Complete\n\n**Sample:** {{ $('Parse CDF → Peaks').item.json.sample_id }}\n**Peaks found:** {{ $('Parse CDF → Peaks').item.json.peak_count }}\n**Enriched:** {{ $('T2 Enrichment (DeepSeek free)').item.json.peaks_enriched }}\n**Output:** {{ $('T2 Enrichment (DeepSeek free)').item.json.output_file }}"
+      },
+      "id": "node-success-log",
+      "name": "Log Success",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1560, 140]
+    },
+    {
+      "parameters": {
+        "content": "=## ❌ Server Not Ready\nPipeline server not running.\nRun: python scripts/pipeline_server.py\nOR use start.cmd which auto-starts it."
+      },
+      "id": "node-server-down",
+      "name": "Server Down Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [900, 420]
+    },
+    {
+      "parameters": {
+        "content": "=## ❌ Parse Failed\nError: {{ $json.detail }}"
+      },
+      "id": "node-parse-fail",
+      "name": "Parse Failed Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1340, 340]
+    }
+  ],
+  "connections": {
+    "Watch raw_data folder": {"main": [[{"node": "Health Check", "type": "main", "index": 0}]]},
+    "Health Check": {"main": [[{"node": "Server OK?", "type": "main", "index": 0}]]},
+    "Server OK?": {
+      "main": [
+        [{"node": "Parse CDF → Peaks", "type": "main", "index": 0}],
+        [{"node": "Server Down Note", "type": "main", "index": 0}]
+      ]
+    },
+    "Parse CDF → Peaks": {"main": [[{"node": "Parse OK?", "type": "main", "index": 0}]]},
+    "Parse OK?": {
+      "main": [
+        [{"node": "T2 Enrichment (DeepSeek free)", "type": "main", "index": 0}],
+        [{"node": "Parse Failed Note", "type": "main", "index": 0}]
+      ]
+    },
+    "T2 Enrichment (DeepSeek free)": {"main": [[{"node": "Log Success", "type": "main", "index": 0}]]}
+  },
+  "pinData": {},
+  "settings": {"executionOrder": "v1"},
+  "staticData": null,
+  "tags": [{"name": "chromatography"}, {"name": "chroma-agent-alpha"}],
+  "triggerCount": 1,
+  "updatedAt": "2026-05-19T00:00:00.000Z",
+  "versionId": "v1"
+}
