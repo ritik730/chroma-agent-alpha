@@ -69,7 +69,7 @@ def health():
     except Exception:
         pass
     return {
-        "status": "ok",
+        "status": "ok" if litellm_ok else "degraded",
         "server": "pipeline_server",
         "litellm_proxy": "up" if litellm_ok else "down",
         "raw_data_files": [f.name for f in RAW_DIR.glob("*.cdf")] + [f.name for f in RAW_DIR.glob("*.mzML")],
@@ -85,8 +85,10 @@ def run_parse_cdf(req: ParseRequest):
     Returns: {sample_id, peaks: [{retention_time, peak_area_mAU, baseline_corrected}], ...}
     """
     input_file = RAW_DIR / req.file
-    if not input_file.exists():
-        raise HTTPException(status_code=404, detail=f"File not found: {req.file} in {RAW_DIR}")
+    if not req.file.strip():
+        raise HTTPException(status_code=400, detail="Filename parameter 'file' is empty.")
+    if not input_file.exists() or not input_file.is_file():
+        raise HTTPException(status_code=404, detail=f"File not found or is a directory: {req.file}")
 
     sample_id = input_file.stem
     output_file = PROC_DIR / f"{sample_id}.json"
@@ -140,11 +142,14 @@ def run_enrich(req: EnrichRequest):
     if not req.peaks:
         raise HTTPException(status_code=400, detail="peaks list is empty")
 
-    peak_summary = "\n".join([
-        f"  Peak {i+1}: RT={p.get('retention_time', '?'):.2f}min, "
-        f"area={p.get('peak_area_mAU', p.get('area', '?')):.1f} mAU"
-        for i, p in enumerate(req.peaks[:20])  # max 20 peaks to T2
-    ])
+    summary_lines = []
+    for i, p in enumerate(req.peaks[:20]):
+        rt_val = p.get('retention_time')
+        rt_str = f"{rt_val:.2f}" if isinstance(rt_val, (int, float)) else str(rt_val if rt_val is not None else '?')
+        area_val = p.get('peak_area_mAU') or p.get('area')
+        area_str = f"{area_val:.1f}" if isinstance(area_val, (int, float)) else str(area_val if area_val is not None else '?')
+        summary_lines.append(f"  Peak {i+1}: RT={rt_str}min, area={area_str} mAU")
+    peak_summary = "\n".join(summary_lines)
 
     prompt = f"""You are a chromatography expert. Given these GC-MS peaks from sample '{req.sample_id}':
 

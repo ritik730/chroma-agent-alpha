@@ -59,7 +59,7 @@
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
-            {"name": "file", "value": "={{ $('Watch raw_data folder').item.json.fileName }}"}
+            {"name": "file", "value": "={{ $('Watch raw_data folder').item.json.name }}"}
           ]
         },
         "options": {
@@ -104,7 +104,7 @@
         "bodyParameters": {
           "parameters": [
             {"name": "sample_id", "value": "={{ $('Parse CDF → Peaks').item.json.sample_id }}"},
-            {"name": "peaks", "value": "={{ JSON.stringify($('Parse CDF → Peaks').item.json.data.peaks) }}"},
+            {"name": "peaks", "value": "={{ $('Parse CDF → Peaks').item.json.data.peaks }}"},
             {"name": "context", "value": "GC-MS chromatography analysis, ethanol/solvent mix"}
           ]
         },
