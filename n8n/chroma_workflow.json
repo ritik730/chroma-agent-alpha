@@ -3,8 +3,11 @@
   "nodes": [
     {
       "parameters": {
+        "triggerOn": "folder",
         "path": "C:\\chroma-agent-alpha\\raw_data",
-        "events": ["created"],
+        "events": [
+          "add"
+        ],
         "options": {}
       },
       "id": "node-file-trigger",
