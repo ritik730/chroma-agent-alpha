@@ -33,7 +33,7 @@ echo    /model claude-t1    T1 Scout
 echo    /model claude-t2    T2 Analyst (DEFAULT)
 echo    /model claude-t3    T3 Architect
 echo.
-echo  n8n: run 'n8n start' in a separate window
+echo  n8n: run 'start-n8n.cmd' in a separate window to enable local file nodes
 echo  then import n8n\chroma_workflow.json
 echo.
 claude --model claude-t2
