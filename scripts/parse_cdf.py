@@ -20,27 +20,36 @@ def load_cdf(filepath: str) -> tuple[np.ndarray, np.ndarray, dict]:
 
     if "ordinate_values" in ds.variables:
         intensity = np.array(ds.variables["ordinate_values"][:], dtype=np.float64)
+        if "actual_delay_time" in ds.variables and "actual_sampling_interval" in ds.variables:
+            delay = float(ds.variables["actual_delay_time"][:])
+            interval = float(ds.variables["actual_sampling_interval"][:])
+            n = len(intensity)
+            rt = delay + np.arange(n) * interval
+        elif "raw_data_retention" in ds.variables:
+            rt = np.array(ds.variables["raw_data_retention"][:], dtype=np.float64)
+        else:
+            n = len(intensity)
+            run_length = float(ds.variables.get("actual_run_time_length", [n - 1])[0])
+            rt = np.linspace(0.0, run_length, n)
+            meta["rt_reconstructed"] = True
+    elif "total_intensity" in ds.variables:
+        intensity = np.array(ds.variables["total_intensity"][:], dtype=np.float64)
+        if "scan_acquisition_time" in ds.variables:
+            # Typically scan_acquisition_time is in seconds, convert to minutes
+            rt = np.array(ds.variables["scan_acquisition_time"][:], dtype=np.float64) / 60.0
+        else:
+            n = len(intensity)
+            rt = np.linspace(0.0, n - 1, n)
+            meta["rt_reconstructed"] = True
     else:
-        raise KeyError(f"No ordinate_values in {filepath}. Variables: {list(ds.variables)}")
-
-    if "actual_delay_time" in ds.variables and "actual_sampling_interval" in ds.variables:
-        delay = float(ds.variables["actual_delay_time"][:])
-        interval = float(ds.variables["actual_sampling_interval"][:])
-        n = len(intensity)
-        rt = delay + np.arange(n) * interval
-    elif "raw_data_retention" in ds.variables:
-        rt = np.array(ds.variables["raw_data_retention"][:], dtype=np.float64)
-    else:
-        n = len(intensity)
-        run_length = float(ds.variables.get("actual_run_time_length", [n - 1])[0])
-        rt = np.linspace(0.0, run_length, n)
-        meta["rt_reconstructed"] = True
+        raise KeyError(f"No ordinate_values or total_intensity in {filepath}. Variables: {list(ds.variables)}")
 
     if "detector_unit" in ds.ncattrs():
         meta["unit"] = ds.getncattr("detector_unit")
 
     ds.close()
     return rt, intensity, meta
+
 
 
 def als_baseline(y: np.ndarray, lam: float = 1e6, p: float = 0.01, n_iter: int = 10) -> np.ndarray:

@@ -191,6 +191,7 @@ def match_peaks(peaks_data: dict, library: list[Spectrum]) -> dict:
 
     return {
         "sample_id": sample_id,
+        "peaks": peaks,
         "matches": matches,
         "unmatched_peaks": unmatched,
         "match_count": len(matches),

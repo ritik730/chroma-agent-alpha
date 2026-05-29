@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CHROMA-AGENT-ALPHA // Control Center</title>
+    <!-- Modern typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- ChartJS for interactive chromatography plots -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-base: #030712;
+            --bg-surface: rgba(17, 24, 39, 0.7);
+            --bg-glow: radial-gradient(circle at 50% -20%, rgba(16, 185, 129, 0.15), rgba(3, 7, 18, 0));
+            --border-glow: rgba(16, 185, 129, 0.2);
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            
+            --primary: #10b981; /* Emerald */
+            --primary-glow: rgba(16, 185, 129, 0.4);
+            --accent-cyan: #06b6d4; /* Cyan */
+            --accent-purple: #8b5cf6; /* Violet */
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --font-outfit: 'Outfit', sans-serif;
+            --font-inter: 'Inter', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            background-image: var(--bg-glow);
+            background-attachment: fixed;
+            color: var(--text-main);
+            font-family: var(--font-inter);
+            min-height: 100vh;
+            overflow-x: hidden;
+            padding-bottom: 3rem;
+        }
+
+        /* Glassmorphism containers */
+        .glass-panel {
+            background: var(--bg-surface);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px border-subtle;
+            border-top: 1px solid var(--border-glow);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            transition: all 0.3s ease;
+        }
+
+        .glass-panel:hover {
+            border-top-color: var(--primary);
+            box-shadow: 0 8px 32px 0 rgba(16, 185, 129, 0.05);
+        }
+
+        header {
+            max-width: 1400px;
+            margin: 2rem auto 1.5rem;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            font-family: var(--font-outfit);
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, #fff 30%, var(--primary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        h1 span {
+            font-size: 0.9rem;
+            font-family: var(--font-mono);
+            color: var(--accent-cyan);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            background: rgba(6, 182, 212, 0.05);
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            letter-spacing: 0;
+            font-weight: 500;
+        }
+
+        .status-container {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .badge {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 9999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-weight: 500;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-subtle);
+        }
+
+        .badge-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .badge-online .badge-dot {
+            background-color: var(--primary);
+            box-shadow: 0 0 8px var(--primary);
+        }
+
+        .badge-degraded .badge-dot {
+            background-color: #f59e0b;
+            box-shadow: 0 0 8px #f59e0b;
+        }
+
+        .badge-offline .badge-dot {
+            background-color: #ef4444;
+            box-shadow: 0 0 8px #ef4444;
+        }
+
+        main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 1.5rem;
+        }
+
+        /* Sidebar Column */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .section-title {
+            font-family: var(--font-outfit);
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* Forms and Controls */
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        select, input, textarea {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 0.75rem;
+            color: #fff;
+            font-family: var(--font-inter);
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        select:focus, input:focus, textarea:focus {
+            border-color: var(--primary);
+        }
+
+        button {
+            width: 100%;
+            background: linear-gradient(135deg, var(--primary) 0%, #059669 100%);
+            border: none;
+            border-radius: 8px;
+            padding: 0.85rem;
+            color: #fff;
+            font-family: var(--font-outfit);
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        button:disabled {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-muted);
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        /* List Items */
+        .list-item {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .list-item:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .list-item.active {
+            border-color: var(--primary);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .list-item-title {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #fff;
+        }
+
+        .list-item-sub {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+
+        /* Workspace main viewport */
+        .viewport {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 380px;
+            width: 100%;
+        }
+
+        /* Pipeline Steps Timeline */
+        .pipeline-timeline {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .step-card {
+            border-radius: 12px;
+            border: 1px solid var(--border-subtle);
+            background: rgba(0, 0, 0, 0.2);
+            padding: 1rem;
+            text-align: center;
+            position: relative;
+            opacity: 0.5;
+            transition: all 0.3s ease;
+        }
+
+        .step-card.active {
+            opacity: 1;
+            border-color: var(--primary-glow);
+            background: rgba(16, 185, 129, 0.03);
+        }
+
+        .step-card.complete {
+            opacity: 1;
+            border-color: var(--primary);
+            background: rgba(16, 185, 129, 0.06);
+        }
+
+        .step-card.active::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50%;
+            height: 2px;
+            background: var(--primary);
+            box-shadow: 0 0 8px var(--primary);
+        }
+
+        .step-num {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--primary);
+            margin-bottom: 0.25rem;
+            font-weight: 600;
+        }
+
+        .step-card.active .step-num {
+            color: var(--accent-cyan);
+        }
+
+        .step-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .step-action-btn {
+            margin-top: 0.5rem;
+            padding: 0.35rem 0.5rem;
+            font-size: 0.75rem;
+            border-radius: 4px;
+        }
+
+        /* Peaks Table */
+        .peaks-table-container {
+            max-height: 250px;
+            overflow-y: auto;
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            text-align: left;
+        }
+
+        th {
+            background: rgba(0, 0, 0, 0.4);
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-subtle);
+            position: sticky;
+            top: 0;
+        }
+
+        td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-subtle);
+            color: var(--text-main);
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .class-badge {
+            font-size: 0.75rem;
+            font-family: var(--font-mono);
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .class-alcohol { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .class-alkane { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+        .class-ketone { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+        .class-aromatic { background: rgba(139, 92, 246, 0.15); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.3); }
+        .class-ester { background: rgba(236, 72, 153, 0.15); color: #f472b6; border: 1px solid rgba(236, 72, 153, 0.3); }
+        .class-acid { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .class-unknown { background: rgba(255, 255, 255, 0.05); color: var(--text-muted); border: 1px solid var(--border-subtle); }
+
+        .console {
+            background: #010409;
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 0.75rem;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: #8b949e;
+            height: 100px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .console span.success { color: var(--primary); }
+        .console span.info { color: var(--accent-cyan); }
+        .console span.error { color: #f87171; }
+        
+        .progress-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(3, 7, 18, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            border-radius: 16px;
+            gap: 1rem;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(16, 185, 129, 0.1);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>CHROMA-AGENT-ALPHA <span>V5.0</span></h1>
+        <div class="status-container">
+            <div id="status-server" class="badge badge-offline"><div class="badge-dot"></div>Server: Checking</div>
+            <div id="status-litellm" class="badge badge-offline"><div class="badge-dot"></div>LiteLLM: Checking</div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <!-- Files List -->
+            <div class="glass-panel">
+                <div class="section-title">Raw Spectra (.cdf)</div>
+                <div class="form-group">
+                    <label for="select-raw-file">Select File</label>
+                    <select id="select-raw-file" onchange="onRawFileChange()">
+                        <option value="">No files found</option>
+                    </select>
+                </div>
+                <button id="btn-parse-cdf" onclick="runIngestion()" disabled style="margin-bottom: 1rem;">
+                    <svg style="width: 18px; height: 18px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/></svg>
+                    Ingest & Parse CDF
+                </button>
+                <div style="border-top: 1px solid var(--border-subtle); padding-top: 1rem;">
+                    <label>Or Upload Instrument File</label>
+                    <button onclick="document.getElementById('file-uploader').click()" style="background: linear-gradient(135deg, var(--accent-cyan) 0%, #0891b2 100%); box-shadow: 0 4px 12px rgba(6, 182, 212, 0.2);">
+                        <svg style="width: 18px; height: 18px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                        Upload Raw File (.cdf / .mzML)
+                    </button>
+                    <input type="file" id="file-uploader" accept=".cdf,.mzML" style="display: none;" onchange="handleFileUpload(event)">
+                </div>
+            </div>
+
+            <!-- Run History -->
+            <div class="glass-panel" style="flex: 1;">
+                <div class="section-title">Processed Runs</div>
+                <div id="runs-list" style="max-height: 380px; overflow-y: auto;">
+                    <!-- Dynamically populated -->
+                    <div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 2rem 0;">No active runs loaded</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Viewport -->
+        <div class="viewport">
+            <!-- Pipeline Timeline -->
+            <div class="glass-panel" style="padding: 1rem;">
+                <div class="pipeline-timeline">
+                    <div id="step-parse" class="step-card">
+                        <div class="step-num">STAGE 01</div>
+                        <div class="step-title">CDF Ingestion</div>
+                    </div>
+                    <div id="step-deconv" class="step-card">
+                        <div class="step-num">STAGE 02</div>
+                        <div class="step-title">GNN Deconv</div>
+                        <button id="btn-deconv" class="step-action-btn" onclick="runDeconv()" disabled>Run GNN</button>
+                    </div>
+                    <div id="step-match" class="step-card">
+                        <div class="step-num">STAGE 03</div>
+                        <div class="step-title">Spectral Match</div>
+                        <button id="btn-match" class="step-action-btn" onclick="runMatch()" disabled>Run matchms</button>
+                    </div>
+                    <div id="step-enrich" class="step-card">
+                        <div class="step-num">STAGE 04</div>
+                        <div class="step-title">AI Enrichment</div>
+                        <button id="btn-enrich" class="step-action-btn" onclick="runEnrich()" disabled>Run T2</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chromatogram Plot -->
+            <div class="glass-panel" style="position: relative;">
+                <div id="loader-viewport" class="progress-overlay" style="display: none;">
+                    <div class="spinner"></div>
+                    <div id="loader-text" style="font-family: var(--font-outfit); font-weight: 500;">Loading run data...</div>
+                </div>
+                <div class="section-title" id="viewport-title">Chromatogram Profile</div>
+                <div class="chart-container">
+                    <canvas id="chromatogramChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Peaks Table -->
+            <div class="glass-panel">
+                <div class="section-title" style="margin-bottom: 0.5rem;">Detected Peaks & Identification</div>
+                <div class="peaks-table-container">
+                    <table id="peaks-table">
+                        <thead>
+                            <tr>
+                                <th>Index</th>
+                                <th>RT (min)</th>
+                                <th>Height (mAU)</th>
+                                <th>Area (mAU·min)</th>
+                                <th>GNN Purity</th>
+                                <th>Match Identification</th>
+                                <th>Match Class</th>
+                                <th>Match Score</th>
+                            </tr>
+                        </thead>
+                        <tbody id="peaks-table-body">
+                            <tr>
+                                <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">No data loaded. Select a cdf file or processed run to begin.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Console Log -->
+            <div class="glass-panel" style="padding: 1rem;">
+                <div class="section-title" style="font-size: 0.9rem; margin-bottom: 0.5rem;">System Logs</div>
+                <div id="console" class="console">Ready. Connect your raw data files inside C:\chroma-agent-alpha\raw_data.</div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let serverUrl = window.location.origin;
+        let chartInstance = null;
+        let currentRunData = null;
+        let activeSampleId = null;
+
+        // Logging utility
+        function log(message, type = 'info') {
+            const consoleBox = document.getElementById('console');
+            const time = new Date().toLocaleTimeString();
+            const colorClass = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
+            consoleBox.innerHTML += `\n[${time}] <span class="${colorClass}">${message}</span>`;
+            consoleBox.scrollTop = consoleBox.scrollHeight;
+        }
+
+        // Initialize Health Checks
+        async function runHealthCheck() {
+            try {
+                const response = await fetch(`${serverUrl}/health`);
+                const data = await response.json();
+                
+                // Update Server badge
+                const sBadge = document.getElementById('status-server');
+                sBadge.className = 'badge badge-online';
+                sBadge.innerHTML = `<div class="badge-dot"></div>Pipeline API: Online`;
+
+                // Update LiteLLM badge
+                const lBadge = document.getElementById('status-litellm');
+                if (data.litellm_proxy === 'up') {
+                    lBadge.className = 'badge badge-online';
+                    lBadge.innerHTML = `<div class="badge-dot"></div>LiteLLM: Online`;
+                } else {
+                    lBadge.className = 'badge badge-degraded';
+                    lBadge.innerHTML = `<div class="badge-dot"></div>LiteLLM: Down`;
+                    log("Warning: LiteLLM proxy (port 4000) is down. Fallback models will be used or T2/T3 enrichments may fail.", "error");
+                }
+
+                // Populate File Selectors
+                populateRawFiles(data.raw_data_files);
+                populateRunsList(data.processed_files);
+            } catch (err) {
+                const sBadge = document.getElementById('status-server');
+                sBadge.className = 'badge badge-offline';
+                sBadge.innerHTML = `<div class="badge-dot"></div>Pipeline API: Offline`;
+                
+                const lBadge = document.getElementById('status-litellm');
+                lBadge.className = 'badge badge-offline';
+                lBadge.innerHTML = `<div class="badge-dot"></div>LiteLLM: Offline`;
+                log("Failed to connect to pipeline server on " + serverUrl, "error");
+            }
+        }
+
+        function populateRawFiles(files) {
+            const selector = document.getElementById('select-raw-file');
+            selector.innerHTML = '';
+            if (!files || files.length === 0) {
+                selector.innerHTML = '<option value="">No files in raw_data/</option>';
+                document.getElementById('btn-parse-cdf').disabled = true;
+                return;
+            }
+            files.forEach(f => {
+                const opt = document.createElement('option');
+                opt.value = f;
+                opt.textContent = f;
+                selector.appendChild(opt);
+            });
+            document.getElementById('btn-parse-cdf').disabled = false;
+        }
+
+        function populateRunsList(files) {
+            const runList = document.getElementById('runs-list');
+            runList.innerHTML = '';
+            
+            // Deduplicate runs into base sample IDs
+            const samples = new Set();
+            files.forEach(f => {
+                let base = f.replace('_deconvolved.json', '').replace('_matched.json', '').replace('_enriched.json', '').replace('.json', '');
+                samples.add(base);
+            });
+
+            if (samples.size === 0) {
+                runList.innerHTML = '<div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 2rem 0;">No active runs loaded</div>';
+                return;
+            }
+
+            samples.forEach(sampleId => {
+                const item = document.createElement('div');
+                item.className = 'list-item';
+                if (sampleId === activeSampleId) item.className += ' active';
+                item.onclick = () => loadRun(sampleId);
+
+                item.innerHTML = `
+                    <div>
+                        <div class="list-item-title">${sampleId}</div>
+                        <div class="list-item-sub">Ready to inspect</div>
+                    </div>
+                    <svg style="width: 16px; height: 16px; color: var(--primary)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                `;
+                runList.appendChild(item);
+            });
+        }
+
+        function onRawFileChange() {
+            // Unselect active run highlight
+            const items = document.querySelectorAll('.list-item');
+            items.forEach(i => i.classList.remove('active'));
+        }
+
+        // Loader helper
+        function showLoader(show, text = 'Loading data...') {
+            const overlay = document.getElementById('loader-viewport');
+            const overlayText = document.getElementById('loader-text');
+            overlayText.textContent = text;
+            overlay.style.display = show ? 'flex' : 'none';
+        }
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            showLoader(true, 'Uploading raw instrument file...');
+            log(`Uploading raw data file: ${file.name}...`, 'info');
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch(`${serverUrl}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const res = await response.json();
+                
+                if (response.ok) {
+                    log(`Successfully uploaded ${file.name} to raw_data/ folder.`, 'success');
+                    await runHealthCheck(); // refreshes selector list
+                    
+                    // Auto-select the newly uploaded file in dropdown
+                    const selector = document.getElementById('select-raw-file');
+                    selector.value = file.name;
+                    onRawFileChange();
+                } else {
+                    log(`Upload failed: ${res.detail}`, 'error');
+                }
+            } catch (err) {
+                log(`Failed uploading file: ${err.message}`, 'error');
+            } finally {
+                showLoader(false);
+                event.target.value = ''; // reset file input
+            }
+        }
+
+        // REST calls to Pipeline API
+        async function runIngestion() {
+            const file = document.getElementById('select-raw-file').value;
+            if (!file) return;
+
+            showLoader(true, 'Extracting Chromatogram & Detected Peaks (parse_cdf.py)...');
+            log(`Running CDF Parse: ${file}...`, 'info');
+
+            try {
+                const response = await fetch(`${serverUrl}/run/parse_cdf`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ file })
+                });
+                const res = await response.json();
+                
+                if (response.ok) {
+                    log(`CDF Ingestion successfully completed! Found ${res.peak_count} peaks.`, 'success');
+                    activeSampleId = res.sample_id;
+                    await loadRun(activeSampleId);
+                    await runHealthCheck(); // refresh runs list
+                } else {
+                    log(`Error running parse_cdf: ${res.detail?.error || res.detail}`, 'error');
+                }
+            } catch (err) {
+                log(`Failed parsing CDF: ${err.message}`, 'error');
+            } finally {
+                showLoader(false);
+            }
+        }
+
+        async function runDeconv() {
+            if (!activeSampleId) return;
+            showLoader(true, 'Training GNN Deconvolution Network (gnn_deconv.py)...');
+            log(`Starting Graph Convolutional Network (GCN) deconvolution for ${activeSampleId}...`, 'info');
+
+            try {
+                const response = await fetch(`${serverUrl}/run/deconv`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sample_id: activeSampleId })
+                });
+                const res = await response.json();
+                
+                if (response.ok) {
+                    log(`GNN Deconvolution complete. Softmax check valid. Regions analyzed: ${res.n_regions}.`, 'success');
+                    await loadRun(activeSampleId);
+                } else {
+                    log(`Error running deconv: ${res.detail?.error || res.detail}`, 'error');
+                }
+            } catch (err) {
+                log(`Failed GNN deconv: ${err.message}`, 'error');
+            } finally {
+                showLoader(false);
+            }
+        }
+
+        async function runMatch() {
+            if (!activeSampleId) return;
+            showLoader(true, 'Computing spectral similarity with matchms (spectral_match.py)...');
+            log(`Running matchms cosine similarity on ${activeSampleId} deconvolved spectra...`, 'info');
+
+            try {
+                const response = await fetch(`${serverUrl}/run/match`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sample_id: activeSampleId })
+                });
+                const res = await response.json();
+                
+                if (response.ok) {
+                    log(`matchms reference spectral matching complete! matched ${res.match_count}/${res.total_peaks} peaks.`, 'success');
+                    await loadRun(activeSampleId);
+                } else {
+                    log(`Error running match: ${res.detail?.error || res.detail}`, 'error');
+                }
+            } catch (err) {
+                log(`Failed spectral match: ${err.message}`, 'error');
+            } finally {
+                showLoader(false);
+            }
+        }
+
+        async function runEnrich() {
+            if (!activeSampleId || !currentRunData) return;
+            showLoader(true, 'Calling LiteLLM T2 endpoint for compound classification...');
+            log(`Sending peak parameters to T2 classification engine...`, 'info');
+
+            try {
+                const response = await fetch(`${serverUrl}/run/enrich`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sample_id: activeSampleId,
+                        peaks: currentRunData.peaks
+                    })
+                });
+                const res = await response.json();
+                
+                if (response.ok) {
+                    log(`T2 classification finished. Enriched ${res.peaks_enriched} peaks in local database.`, 'success');
+                    await loadRun(activeSampleId);
+                } else {
+                    log(`Error running enrichment: ${res.detail?.error || res.detail}`, 'error');
+                }
+            } catch (err) {
+                log(`Failed enrichment: ${err.message}`, 'error');
+            } finally {
+                showLoader(false);
+            }
+        }
+
+        // Fetch and load details of a specific sample run
+        async function loadRun(sampleId) {
+            activeSampleId = sampleId;
+            
+            // Highlight selected run in list
+            const items = document.querySelectorAll('.list-item');
+            items.forEach(i => {
+                const title = i.querySelector('.list-item-title').textContent;
+                if (title === sampleId) {
+                    i.classList.add('active');
+                } else {
+                    i.classList.remove('active');
+                }
+            });
+
+            showLoader(true, 'Fetching pipeline results...');
+            log(`Loading sample run: ${sampleId}...`, 'info');
+
+            // Reset step cards
+            document.getElementById('step-parse').className = 'step-card complete';
+            document.getElementById('step-deconv').className = 'step-card';
+            document.getElementById('btn-deconv').disabled = false;
+            document.getElementById('step-match').className = 'step-card';
+            document.getElementById('btn-match').disabled = true;
+            document.getElementById('step-enrich').className = 'step-card';
+            document.getElementById('btn-enrich').disabled = true;
+
+            try {
+                // Fetch results (this fetches enriched, matched or raw automatically depending on what exists)
+                let data = null;
+                
+                // Fetch matched first if exists
+                try {
+                    const r = await fetch(`${serverUrl}/results/${sampleId}_matched`);
+                    if (r.ok) data = await r.json();
+                } catch(e) {}
+
+                if (!data) {
+                    // Try deconvolved
+                    try {
+                        const r = await fetch(`${serverUrl}/results/${sampleId}_deconvolved`);
+                        if (r.ok) data = await r.json();
+                    } catch(e) {}
+                }
+
+                if (!data) {
+                    // Fetch standard
+                    const r = await fetch(`${serverUrl}/results/${sampleId}`);
+                    data = await r.json();
+                }
+
+                currentRunData = data;
+                document.getElementById('viewport-title').textContent = `Chromatogram Profile: ${sampleId}`;
+
+                // Assess pipeline progression based on output content keys
+                let isDeconv = data.deconvolution === 'complete';
+                let isMatched = data.matches !== undefined;
+                let isEnriched = data.enriched_at !== undefined || (data.peaks && data.peaks[0] && data.peaks[0].compound_class !== undefined);
+
+                // Set default button texts
+                document.getElementById('btn-deconv').textContent = 'Run GNN';
+                document.getElementById('btn-match').textContent = 'Run matchms';
+                document.getElementById('btn-enrich').textContent = 'Run T2';
+
+                if (isDeconv) {
+                    document.getElementById('step-deconv').className = 'step-card complete';
+                    document.getElementById('btn-deconv').disabled = true;
+                    document.getElementById('btn-deconv').textContent = 'GNN Complete';
+                    document.getElementById('btn-match').disabled = false;
+                    document.getElementById('step-match').className = 'step-card active';
+                } else {
+                    document.getElementById('step-deconv').className = 'step-card active';
+                    document.getElementById('btn-deconv').disabled = false;
+                }
+
+                if (isMatched) {
+                    document.getElementById('step-match').className = 'step-card complete';
+                    document.getElementById('btn-match').disabled = true;
+                    document.getElementById('btn-match').textContent = 'Match Complete';
+                    document.getElementById('btn-enrich').disabled = false;
+                    document.getElementById('step-enrich').className = 'step-card active';
+                }
+
+                if (isEnriched) {
+                    document.getElementById('step-enrich').className = 'step-card complete';
+                    document.getElementById('btn-enrich').disabled = true;
+                    document.getElementById('btn-enrich').textContent = 'Enrich Complete';
+                }
+
+                renderPeaksTable(data.peaks, data.matches);
+                renderChart(data);
+                log(`Loaded run: ${sampleId} successfully.`, 'info');
+            } catch (err) {
+                log(`Failed loading results for ${sampleId}: ${err.message}`, 'error');
+            } finally {
+                showLoader(false);
+            }
+        }
+
+        // Render Peaks table with matching classes and formatting
+        function renderPeaksTable(peaks, matches) {
+            const tbody = document.getElementById('peaks-table-body');
+            tbody.innerHTML = '';
+
+            if (!peaks || peaks.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">No peaks detected in this run.</td></tr>';
+                return;
+            }
+
+            // Map matches by peak_index
+            const matchMap = {};
+            if (matches) {
+                matches.forEach(m => {
+                    matchMap[m.peak_index] = m;
+                });
+            } else {
+                // If the file is already a combined matched file, peaks themselves might contain match info
+                peaks.forEach(p => {
+                    if (p.compound_name) {
+                        matchMap[p.peak_index] = p;
+                    }
+                });
+            }
+
+            peaks.forEach(p => {
+                const match = matchMap[p.peak_index];
+                const tr = document.createElement('tr');
+
+                const idx = p.peak_index;
+                const rt = p.retention_time.toFixed(2);
+                const height = p.peak_height_mAU.toFixed(1);
+                const area = p.peak_area_mAU.toFixed(1);
+                
+                const purity = p.component_purity !== undefined ? p.component_purity.toFixed(2) : '-';
+                
+                const idName = match ? match.compound_name : 'unidentified';
+                const idClass = match ? match.compound_class : 'unknown';
+                const idScore = match ? (match.cosine_similarity !== undefined ? match.cosine_similarity.toFixed(3) : '1.000') : '-';
+
+                const badgeClass = `class-badge class-${idClass}`;
+
+                tr.innerHTML = `
+                    <td style="font-family: var(--font-mono)">${idx}</td>
+                    <td>${rt}</td>
+                    <td>${height}</td>
+                    <td>${area}</td>
+                    <td style="font-family: var(--font-mono)">${purity}</td>
+                    <td style="font-weight: 500">${idName}</td>
+                    <td><span class="${badgeClass}">${idClass}</span></td>
+                    <td style="font-family: var(--font-mono)">${idScore}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Reconstruct the visual chromatogram signal using Gaussian curves from peak parameter data
+        function renderChart(data) {
+            const ctx = document.getElementById('chromatogramChart').getContext('2d');
+            
+            // Reconstruct continuous RT axis from start of first peak to end of last
+            const peaks = data.peaks || [];
+            if (peaks.length === 0) return;
+
+            let rtMin = Math.min(...peaks.map(p => p.rt_start)) - 0.5;
+            let rtMax = Math.max(...peaks.map(p => p.rt_end)) + 0.5;
+            rtMin = Math.max(0, rtMin);
+
+            const nPoints = 800;
+            const rtAxis = [];
+            const intensityAxis = [];
+
+            for (let i = 0; i < nPoints; i++) {
+                const t = rtMin + (i / nPoints) * (rtMax - rtMin);
+                rtAxis.push(t);
+                
+                // Sum Gaussian profiles for all peaks to model the chromatogram curve
+                let signal = 0.05; // tiny baseline offset
+                peaks.forEach(p => {
+                    const apex = p.retention_time;
+                    const height = p.peak_height_mAU;
+                    const width = p.rt_end - p.rt_start;
+                    const sigma = width / 4.0; // estimate standard deviation
+                    
+                    const val = height * Math.exp(-Math.pow(t - apex, 2) / (2 * Math.pow(sigma, 2)));
+                    signal += val;
+                });
+                intensityAxis.push(signal);
+            }
+
+            // Build peak apex scatter points
+            const apexPoints = peaks.map(p => ({
+                x: p.retention_time,
+                y: p.peak_height_mAU,
+                label: `Peak ${p.peak_index} (RT=${p.retention_time.toFixed(2)}min, Area=${p.peak_area_mAU.toFixed(1)})`
+            }));
+
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: rtAxis,
+                    datasets: [
+                        {
+                            label: 'Chromatogram Trace (mAU)',
+                            data: intensityAxis,
+                            borderColor: '#10b981',
+                            borderWidth: 2,
+                            fill: true,
+                            backgroundColor: 'rgba(16, 185, 129, 0.03)',
+                            pointRadius: 0,
+                            tension: 0.2
+                        },
+                        {
+                            label: 'Peak Apexes',
+                            data: apexPoints,
+                            type: 'scatter',
+                            backgroundColor: '#06b6d4',
+                            borderColor: '#ffffff',
+                            borderWidth: 1.5,
+                            pointRadius: 6,
+                            pointHoverRadius: 8,
+                            showLine: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            title: {
+                                display: true,
+                                text: 'Retention Time (min)',
+                                color: '#9ca3af',
+                                font: { family: 'Outfit', size: 12, weight: '500' }
+                            },
+                            grid: { color: 'rgba(255, 255, 255, 0.04)' },
+                            ticks: { color: '#9ca3af', callback: v => v.toFixed(1) }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Detector Signal (mAU)',
+                                color: '#9ca3af',
+                                font: { family: 'Outfit', size: 12, weight: '500' }
+                            },
+                            grid: { color: 'rgba(255, 255, 255, 0.04)' },
+                            ticks: { color: '#9ca3af' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    if (context.datasetIndex === 1) {
+                                        return context.raw.label;
+                                    }
+                                    return `RT: ${context.parsed.x.toFixed(2)} min | Signal: ${context.parsed.y.toFixed(1)} mAU`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Run setup on window load
+        window.onload = () => {
+            runHealthCheck();
+            // Poll health state every 10 seconds
+            setInterval(runHealthCheck, 10000);
+        };
+    </script>
+</body>
+</html>
