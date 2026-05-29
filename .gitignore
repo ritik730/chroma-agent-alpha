@@ -6,3 +6,6 @@ __pycache__/
 node_modules/
 dist/
 memory/tier-usage.jsonl
+raw_data/*.cdf
+raw_data/*.CDF
+processed/*.json
