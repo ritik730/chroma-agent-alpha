@@ -5,7 +5,7 @@ echo  CHROMA-AGENT-ALPHA // TRI-STACK v5
 echo ========================================
 echo.
 echo [1/3] Starting LiteLLM proxy on port 4000...
-start "LiteLLM Proxy" "C:\chroma-agent-alpha\venv\Scripts\litellm.exe" --config C:\chroma-agent-alpha\litellm_config.yaml
+start "LiteLLM Proxy" /d "C:\chroma-agent-alpha" "C:\chroma-agent-alpha\venv\Scripts\litellm.exe" --config C:\chroma-agent-alpha\litellm_config.yaml
 timeout /t 4 /nobreak >nul
 
 echo [2/3] Starting Pipeline Server on port 8001...
@@ -16,6 +16,7 @@ echo [3/3] Wiring Claude Code to LiteLLM...
 set ANTHROPIC_BASE_URL=http://localhost:4000
 set ANTHROPIC_API_KEY=sk-litellm-1234
 set ANTHROPIC_AUTH_TOKEN=
+set CLAUDE_CODE_AUTO_COMPACT_WINDOW=40000
 echo.
 echo ========================================
 echo  STACK READY:

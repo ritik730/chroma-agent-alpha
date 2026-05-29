@@ -8,6 +8,22 @@ model_list:
       max_tokens: 4096
       temperature: 0.3
       request_timeout: 30
+    model_info:
+      rpm: 30                # requests per minute — stay under free-tier limits
+      tpm: 100000            # tokens per minute
+
+  # ── T1-FREE: Scout fallback (free Llama) ──────────────────────────
+  - model_name: "claude-t1-free"
+    litellm_params:
+      model: "openrouter/meta-llama/llama-3.1-8b-instruct:free"
+      api_key: "os.environ/OPENROUTER_API_KEY"
+      supports_function_calling: true
+      max_tokens: 4096
+      temperature: 0.3
+      request_timeout: 30
+    model_info:
+      rpm: 30
+      tpm: 80000
 
   # ── T2: Analyst — DeepSeek V4 Flash FREE (1M ctx, ₹0) ───────────
   - model_name: "claude-t2"
@@ -18,6 +34,22 @@ model_list:
       max_tokens: 8192
       temperature: 0.3
       request_timeout: 60
+    model_info:
+      rpm: 20                # free-tier is aggressively limited upstream
+      tpm: 80000
+
+  # ── T2-FREE: Llama fallback (free, avoids paid t3 on rate-limit) ─
+  - model_name: "claude-t2-free"
+    litellm_params:
+      model: "openrouter/meta-llama/llama-3.3-70b-instruct:free"
+      api_key: "os.environ/OPENROUTER_API_KEY"
+      supports_function_calling: true
+      max_tokens: 8192
+      temperature: 0.3
+      request_timeout: 60
+    model_info:
+      rpm: 20
+      tpm: 80000
 
   # ── T3: Architect — DeepSeek V4 Flash PAID (fast, no timeout) ───
   - model_name: "claude-t3"
@@ -25,21 +57,43 @@ model_list:
       model: "openrouter/deepseek/deepseek-v4-flash"
       api_key: "os.environ/OPENROUTER_API_KEY"
       supports_function_calling: true
-      max_tokens: 16384
+      max_tokens: 8192       # ← reduced from 16384 to stay within credit budget
       temperature: 0.2
       request_timeout: 120
+    model_info:
+      rpm: 30
+      tpm: 120000
+
+  # ── T3-COT: Reasoning / DeepSeek R1 Distill Qwen (paid CoT) ───────
+  - model_name: "claude-t3-cot"
+    litellm_params:
+      model: "openrouter/deepseek/deepseek-r1-distill-qwen-32b"
+      api_key: "os.environ/OPENROUTER_API_KEY"
+      supports_function_calling: true
+      max_tokens: 8192
+      temperature: 0.2
+      request_timeout: 120
+    model_info:
+      rpm: 30
+      tpm: 120000
 
 litellm_settings:
   drop_params: true
-  num_retries: 2
+  num_retries: 3             # ← increased from 2 for better resilience
   request_timeout: 120
   set_verbose: false
+  callbacks: [custom_callbacks.proxy_handler_instance]
 
 router_settings:
   routing_strategy: "simple-shuffle"
-  num_retries: 2
-  retry_after: 5
-  allowed_fails: 1
+  num_retries: 3             # ← increased from 2
+  retry_after: 8             # ← increased from 5 — more backoff for rate limits
+  allowed_fails: 2           # ← increased from 1 — less aggressive cooldown
+  cooldown_time: 30          # ← NEW: cool down a deployment for 30s after failures
   fallbacks:
     - {"claude-t1": ["claude-t2"]}
-    - {"claude-t2": ["claude-t3"]}
+    - {"claude-t1-free": ["claude-t1"]}
+    - {"claude-t2": ["claude-t2-free", "claude-t3"]}   # ← try free Llama before paid
+    - {"claude-t2-free": ["claude-t3"]}                 # ← NEW: fallback for claude-t2-free
+    - {"claude-t3": ["claude-t1"]}                      # ← NEW: circular fallback
+    - {"claude-t3-cot": ["claude-t3"]}                  # ← NEW: fallback for reasoning model

@@ -44,8 +44,11 @@ def validate_script(script_path: str):
             # Check warnings
             for warning in w:
                 if issubclass(warning.category, DeprecationWarning):
-                    print(f"[LOOP1] val: FAIL — {path.name} — DeprecationWarning: {warning.message} — [DATE]")
-                    return False
+                    filename = str(warning.filename)
+                    # Ignore warnings from external packages (site-packages or venv)
+                    if "site-packages" not in filename and "venv" not in filename:
+                        print(f"[LOOP1] val: FAIL — {path.name} — DeprecationWarning: {warning.message} — [DATE]")
+                        return False
                 
     except ImportError as e:
         print(f"[LOOP1] val: FAIL — {path.name} — ImportError: {str(e)} — [DATE]")
@@ -57,12 +60,12 @@ def validate_script(script_path: str):
 
     # Additional Mock Checks for specific pending files
     if module_name == "spectral_match":
-        if not hasattr(module, 'matchms'):
+        if not hasattr(module, 'matchms') and not hasattr(module, 'Spectrum') and not hasattr(module, 'CosineGreedy'):
             print(f"[LOOP1] val: FAIL — {path.name} — matchms library not imported — [DATE]")
             return False
             
     elif module_name == "gnn_deconv":
-        if not hasattr(module, 'torch_geometric'):
+        if not hasattr(module, 'torch_geometric') and not hasattr(module, 'Data') and not hasattr(module, 'GCNConv'):
              print(f"[LOOP1] val: FAIL — {path.name} — torch_geometric library not imported — [DATE]")
              return False
              
