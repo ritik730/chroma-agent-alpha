@@ -473,9 +473,13 @@
                         <option value="">No files found</option>
                     </select>
                 </div>
-                <button id="btn-parse-cdf" onclick="runIngestion()" disabled style="margin-bottom: 1rem;">
+                <button id="btn-parse-cdf" onclick="runIngestion()" disabled style="margin-bottom: 0.75rem;">
                     <svg style="width: 18px; height: 18px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/></svg>
                     Ingest & Parse CDF
+                </button>
+                <button id="btn-full-pipeline" onclick="runFullPipeline()" disabled style="margin-bottom: 1rem; background: linear-gradient(135deg, var(--accent-purple) 0%, #6d28d9 100%); box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25);">
+                    <svg style="width: 18px; height: 18px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    ⚡ Run Full Pipeline
                 </button>
                 <div style="border-top: 1px solid var(--border-subtle); padding-top: 1rem;">
                     <label>Or Upload Instrument File</label>
@@ -538,7 +542,13 @@
 
             <!-- Peaks Table -->
             <div class="glass-panel">
-                <div class="section-title" style="margin-bottom: 0.5rem;">Detected Peaks & Identification</div>
+                <div class="section-title" style="margin-bottom: 0.5rem;">
+                    Detected Peaks & Identification
+                    <button id="btn-export-excel" onclick="exportExcel()" disabled style="width: auto; padding: 0.4rem 1rem; font-size: 0.8rem; border-radius: 6px; background: linear-gradient(135deg, #059669 0%, #047857 100%); box-shadow: 0 2px 8px rgba(5, 150, 105, 0.2);">
+                        <svg style="width: 16px; height: 16px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        Export to Excel
+                    </button>
+                </div>
                 <div class="peaks-table-container">
                     <table id="peaks-table">
                         <thead>
@@ -637,6 +647,7 @@
                 selector.appendChild(opt);
             });
             document.getElementById('btn-parse-cdf').disabled = false;
+            document.getElementById('btn-full-pipeline').disabled = false;
         }
 
         function populateRunsList(files) {
@@ -834,6 +845,72 @@
             }
         }
 
+        // Run full pipeline: parse → deconv → match in one click
+        async function runFullPipeline() {
+            const file = document.getElementById('select-raw-file').value;
+            if (!file) return;
+
+            showLoader(true, '⚡ Running Full Pipeline: Parse → Deconv → Match...');
+            log(`Starting full pipeline on: ${file}...`, 'info');
+
+            try {
+                const response = await fetch(`${serverUrl}/run/full_pipeline`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ file })
+                });
+                const res = await response.json();
+
+                if (response.ok) {
+                    const stages = res.stages_completed.join(' → ');
+                    log(`Full pipeline complete! Stages: [${stages}]. ` +
+                        `${res.peak_count} peaks detected, ${res.match_count} matched.`, 'success');
+                    activeSampleId = res.sample_id;
+                    await loadRun(activeSampleId);
+                    await runHealthCheck();
+                } else {
+                    log(`Full pipeline error: ${res.detail?.error || res.detail}`, 'error');
+                }
+            } catch (err) {
+                log(`Failed full pipeline: ${err.message}`, 'error');
+            } finally {
+                showLoader(false);
+            }
+        }
+
+        // Export current sample results to formatted Excel spreadsheet
+        async function exportExcel() {
+            if (!activeSampleId) {
+                log('No sample loaded to export.', 'error');
+                return;
+            }
+
+            log(`Generating Excel report for ${activeSampleId}...`, 'info');
+
+            try {
+                const response = await fetch(`${serverUrl}/export/${activeSampleId}`);
+                if (!response.ok) {
+                    const err = await response.json();
+                    log(`Export failed: ${err.detail}`, 'error');
+                    return;
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${activeSampleId}_results.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+
+                log(`Excel report downloaded: ${activeSampleId}_results.xlsx`, 'success');
+            } catch (err) {
+                log(`Failed exporting Excel: ${err.message}`, 'error');
+            }
+        }
+
         // Fetch and load details of a specific sample run
         async function loadRun(sampleId) {
             activeSampleId = sampleId;
@@ -925,6 +1002,8 @@
 
                 renderPeaksTable(data.peaks, data.matches);
                 renderChart(data);
+                // Enable export button once data is loaded
+                document.getElementById('btn-export-excel').disabled = !(data.peaks && data.peaks.length > 0);
                 log(`Loaded run: ${sampleId} successfully.`, 'info');
             } catch (err) {
                 log(`Failed loading results for ${sampleId}: ${err.message}`, 'error');
@@ -967,11 +1046,11 @@
                 const height = p.peak_height_mAU.toFixed(1);
                 const area = p.peak_area_mAU.toFixed(1);
                 
-                const purity = p.component_purity !== undefined ? p.component_purity.toFixed(2) : '-';
+                const purity = p.component_purity !== undefined ? p.component_purity.toFixed(2) : '<span style="color: #6b7280; font-style: italic; font-size: 0.75rem;">Not Run</span>';
                 
-                const idName = match ? match.compound_name : 'unidentified';
+                const idName = match ? match.compound_name : '<span style="color: #6b7280; font-style: italic; font-size: 0.75rem;">Not Run</span>';
                 const idClass = match ? match.compound_class : 'unknown';
-                const idScore = match ? (match.cosine_similarity !== undefined ? match.cosine_similarity.toFixed(3) : '1.000') : '-';
+                const idScore = match ? (match.cosine_similarity !== undefined ? match.cosine_similarity.toFixed(3) : '1.000') : '<span style="color: #6b7280; font-style: italic; font-size: 0.75rem;">Not Run</span>';
 
                 const badgeClass = `class-badge class-${idClass}`;
 
@@ -1023,12 +1102,25 @@
                 intensityAxis.push(signal);
             }
 
-            // Build peak apex scatter points
-            const apexPoints = peaks.map(p => ({
-                x: p.retention_time,
-                y: p.peak_height_mAU,
-                label: `Peak ${p.peak_index} (RT=${p.retention_time.toFixed(2)}min, Area=${p.peak_area_mAU.toFixed(1)})`
-            }));
+            // Build peak apex scatter points aligning with the reconstructed curve
+            const apexPoints = peaks.map(p => {
+                const t = p.retention_time;
+                let signalAtRt = 0.05; // match the baseline offset in intensityAxis
+                peaks.forEach(otherP => {
+                    const apex = otherP.retention_time;
+                    const height = otherP.peak_height_mAU;
+                    const width = otherP.rt_end - otherP.rt_start;
+                    const sigma = width / 4.0;
+                    
+                    const val = height * Math.exp(-Math.pow(t - apex, 2) / (2 * Math.pow(sigma, 2)));
+                    signalAtRt += val;
+                });
+                return {
+                    x: t,
+                    y: signalAtRt,
+                    label: `Peak ${p.peak_index} (RT=${t.toFixed(2)}min, Height=${p.peak_height_mAU.toFixed(0)}mAU, Area=${p.peak_area_mAU.toFixed(1)})`
+                };
+            });
 
             if (chartInstance) {
                 chartInstance.destroy();

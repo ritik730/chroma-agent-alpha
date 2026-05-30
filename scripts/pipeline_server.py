@@ -23,7 +23,7 @@ import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 
 load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env")
@@ -320,10 +320,10 @@ def run_match(req: MatchRequest):
     try:
         result = subprocess.run(
             [PYTHON, str(SCRIPTS_DIR / "spectral_match.py"), str(input_file)],
-            capture_output=True, text=True, timeout=120, cwd=str(BASE_DIR)
+            capture_output=True, text=True, timeout=300, cwd=str(BASE_DIR)
         )
     except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=504, detail="spectral_match.py timed out after 120s")
+        raise HTTPException(status_code=504, detail="spectral_match.py timed out after 300s")
 
     if result.returncode != 0:
         raise HTTPException(status_code=500, detail={
@@ -394,6 +394,231 @@ def get_results(sample_id: str):
             data["peaks"] = peaks
 
     return data
+
+
+@app.get("/export/{sample_id}")
+def export_excel(sample_id: str):
+    """Generate and download an Excel (.xlsx) report for a processed sample.
+    Merges peaks + match data into a formatted spreadsheet saved to processed/."""
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    # --- Load the best available data ---
+    matched_file = PROC_DIR / f"{sample_id}_matched.json"
+    deconv_file = PROC_DIR / f"{sample_id}_deconvolved.json"
+    base_file = PROC_DIR / f"{sample_id}.json"
+
+    peaks = []
+    matches = []
+    source_label = "raw"
+
+    if matched_file.exists():
+        data = json.loads(matched_file.read_text())
+        peaks = data.get("peaks", [])
+        matches = data.get("matches", [])
+        source_label = "matched"
+    elif deconv_file.exists():
+        data = json.loads(deconv_file.read_text())
+        peaks = data.get("peaks", [])
+        source_label = "deconvolved"
+    elif base_file.exists():
+        data = json.loads(base_file.read_text())
+        peaks = data.get("peaks", [])
+        source_label = "parsed"
+    else:
+        raise HTTPException(status_code=404, detail=f"No processed data found for sample: {sample_id}")
+
+    if not peaks:
+        raise HTTPException(status_code=404, detail=f"No peaks found in data for sample: {sample_id}")
+
+    # Build match lookup
+    match_map = {}
+    for m in matches:
+        match_map[m.get("peak_index")] = m
+
+    # --- Create workbook ---
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Peak Results"
+
+    # Styles
+    header_font = Font(name="Calibri", bold=True, size=11, color="FFFFFF")
+    header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
+    header_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    thin_border = Border(
+        left=Side(style="thin", color="D9D9D9"),
+        right=Side(style="thin", color="D9D9D9"),
+        top=Side(style="thin", color="D9D9D9"),
+        bottom=Side(style="thin", color="D9D9D9"),
+    )
+    data_font = Font(name="Calibri", size=10)
+    data_align = Alignment(horizontal="center", vertical="center")
+    match_fill = PatternFill(start_color="E2EFDA", end_color="E2EFDA", fill_type="solid")
+    nomatch_fill = PatternFill(start_color="FCE4EC", end_color="FCE4EC", fill_type="solid")
+
+    # Title row
+    ws.merge_cells("A1:I1")
+    title_cell = ws["A1"]
+    title_cell.value = f"CHROMA-AGENT-ALPHA — Peak Report: {sample_id}"
+    title_cell.font = Font(name="Calibri", bold=True, size=14, color="1F4E79")
+    title_cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    # Metadata row
+    ws.merge_cells("A2:I2")
+    meta_cell = ws["A2"]
+    meta_cell.value = f"Generated: {time.strftime('%Y-%m-%d %H:%M:%S')} | Source: {source_label} | Total Peaks: {len(peaks)}"
+    meta_cell.font = Font(name="Calibri", size=9, italic=True, color="808080")
+    meta_cell.alignment = Alignment(horizontal="center")
+
+    # Headers
+    headers = [
+        "Peak Index", "RT (min)", "Height (mAU)", "Area (mAU·min)",
+        "GNN Purity", "Compound ID", "Compound Class", "Match Score", "Fragments Matched"
+    ]
+    for col_idx, h in enumerate(headers, 1):
+        cell = ws.cell(row=4, column=col_idx, value=h)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_align
+        cell.border = thin_border
+
+    # Data rows
+    for row_idx, p in enumerate(peaks, 5):
+        pidx = p.get("peak_index", "")
+        match = match_map.get(pidx)
+        row_fill = match_fill if match else nomatch_fill
+
+        values = [
+            pidx,
+            round(p.get("retention_time", 0), 4),
+            round(p.get("peak_height_mAU", 0), 2),
+            round(p.get("peak_area_mAU", 0), 2),
+            round(p.get("component_purity", 0), 3) if p.get("component_purity") is not None else "N/A",
+            match["compound_name"] if match else "unidentified",
+            match["compound_class"] if match else "unknown",
+            round(match["cosine_similarity"], 4) if match else "N/A",
+            match.get("n_fragments_matched", "N/A") if match else "N/A",
+        ]
+
+        for col_idx, val in enumerate(values, 1):
+            cell = ws.cell(row=row_idx, column=col_idx, value=val)
+            cell.font = data_font
+            cell.alignment = data_align
+            cell.border = thin_border
+            cell.fill = row_fill
+
+    # Column widths
+    col_widths = [12, 12, 14, 16, 12, 35, 18, 14, 18]
+    for i, w in enumerate(col_widths, 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+
+    # Freeze header row
+    ws.freeze_panes = "A5"
+
+    # Summary sheet
+    ws2 = wb.create_sheet(title="Summary")
+    ws2["A1"] = "CHROMA-AGENT-ALPHA Pipeline Summary"
+    ws2["A1"].font = Font(name="Calibri", bold=True, size=14, color="1F4E79")
+    summary_data = [
+        ("Sample ID", sample_id),
+        ("Total Peaks", len(peaks)),
+        ("Matched Peaks", len(matches)),
+        ("Unmatched Peaks", len(peaks) - len(matches)),
+        ("Match Rate", f"{len(matches)/len(peaks)*100:.1f}%" if peaks else "0%"),
+        ("Pipeline Stage", source_label),
+        ("Export Time", time.strftime("%Y-%m-%d %H:%M:%S")),
+    ]
+    for row_idx, (label, value) in enumerate(summary_data, 3):
+        ws2.cell(row=row_idx, column=1, value=label).font = Font(name="Calibri", bold=True, size=10)
+        ws2.cell(row=row_idx, column=2, value=value).font = Font(name="Calibri", size=10)
+    ws2.column_dimensions["A"].width = 20
+    ws2.column_dimensions["B"].width = 30
+
+    # Save and return
+    output_path = PROC_DIR / f"{sample_id}_results.xlsx"
+    wb.save(str(output_path))
+
+    return FileResponse(
+        path=str(output_path),
+        filename=f"{sample_id}_results.xlsx",
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
+@app.post("/run/full_pipeline")
+def run_full_pipeline(req: ParseRequest):
+    """Run the full pipeline: parse_cdf → gnn_deconv → spectral_match in sequence."""
+    # Stage 1: Parse CDF
+    input_file = RAW_DIR / req.file
+    if not req.file.strip():
+        raise HTTPException(status_code=400, detail="Filename parameter 'file' is empty.")
+    if not input_file.exists() or not input_file.is_file():
+        raise HTTPException(status_code=404, detail=f"File not found: {req.file}")
+
+    sample_id = input_file.stem
+    stages_completed = []
+
+    # Parse
+    try:
+        result = subprocess.run(
+            [PYTHON, str(SCRIPTS_DIR / "parse_cdf.py"), str(input_file)],
+            capture_output=True, text=True, timeout=120, cwd=str(BASE_DIR)
+        )
+        if result.returncode != 0:
+            raise HTTPException(status_code=500, detail={"error": "parse_cdf.py failed", "stage": "parse", "stderr": result.stderr[-500:]})
+        stages_completed.append("parse")
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail="parse_cdf.py timed out")
+
+    # Deconvolve
+    parse_output = PROC_DIR / f"{sample_id}.json"
+    if parse_output.exists():
+        try:
+            result = subprocess.run(
+                [PYTHON, str(SCRIPTS_DIR / "gnn_deconv.py"), str(parse_output)],
+                capture_output=True, text=True, timeout=120, cwd=str(BASE_DIR)
+            )
+            if result.returncode == 0:
+                stages_completed.append("deconv")
+        except subprocess.TimeoutExpired:
+            pass  # Continue to match even if deconv times out
+
+    # Match
+    match_input = PROC_DIR / f"{sample_id}_deconvolved.json"
+    if not match_input.exists():
+        match_input = parse_output
+
+    if match_input.exists():
+        try:
+            result = subprocess.run(
+                [PYTHON, str(SCRIPTS_DIR / "spectral_match.py"), str(match_input)],
+                capture_output=True, text=True, timeout=300, cwd=str(BASE_DIR)
+            )
+            if result.returncode == 0:
+                stages_completed.append("match")
+        except subprocess.TimeoutExpired:
+            print("[FULL PIPELINE] Matching timed out after 300s.")
+            pass
+
+    # Load final result
+    final_file = PROC_DIR / f"{sample_id}_matched.json"
+    if not final_file.exists():
+        final_file = PROC_DIR / f"{sample_id}_deconvolved.json"
+    if not final_file.exists():
+        final_file = parse_output
+
+    final_data = {}
+    if final_file.exists():
+        final_data = json.loads(final_file.read_text())
+
+    return {
+        "status": "ok",
+        "sample_id": sample_id,
+        "stages_completed": stages_completed,
+        "peak_count": len(final_data.get("peaks", [])),
+        "match_count": len(final_data.get("matches", [])),
+    }
 
 
 if __name__ == "__main__":
