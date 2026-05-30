@@ -77,6 +77,25 @@ model_list:
       rpm: 30
       tpm: 120000
 
+  # ── Claude Proxy Fallbacks (Port 8080) ──────────────────────────
+  - model_name: "claude-proxy-flash"
+    litellm_params:
+      model: "anthropic/gemini-3-flash-agent"
+      api_base: "http://localhost:8080"
+      api_key: "sk-dummy"
+      max_tokens: 4096
+      temperature: 0.3
+      request_timeout: 30
+
+  - model_name: "claude-proxy-pro"
+    litellm_params:
+      model: "anthropic/gemini-3.1-pro-high"
+      api_base: "http://localhost:8080"
+      api_key: "sk-dummy"
+      max_tokens: 8192
+      temperature: 0.2
+      request_timeout: 60
+
 litellm_settings:
   drop_params: true
   num_retries: 3             # ← increased from 2 for better resilience
@@ -91,9 +110,10 @@ router_settings:
   allowed_fails: 2           # ← increased from 1 — less aggressive cooldown
   cooldown_time: 30          # ← NEW: cool down a deployment for 30s after failures
   fallbacks:
-    - {"claude-t1": ["claude-t2"]}
-    - {"claude-t1-free": ["claude-t1"]}
-    - {"claude-t2": ["claude-t2-free", "claude-t3"]}   # ← try free Llama before paid
-    - {"claude-t2-free": ["claude-t3"]}                 # ← NEW: fallback for claude-t2-free
-    - {"claude-t3": ["claude-t1"]}                      # ← NEW: circular fallback
-    - {"claude-t3-cot": ["claude-t3"]}                  # ← NEW: fallback for reasoning model
+    - {"claude-t1": ["claude-t2", "claude-proxy-flash"]}
+    - {"claude-t1-free": ["claude-t1", "claude-proxy-flash"]}
+    - {"claude-t2": ["claude-t2-free", "claude-t3", "claude-proxy-flash"]}
+    - {"claude-t2-free": ["claude-t3", "claude-proxy-flash"]}
+    - {"claude-t3": ["claude-t1", "claude-proxy-pro"]}
+    - {"claude-t3-cot": ["claude-t3", "claude-proxy-pro"]}
+

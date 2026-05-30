@@ -233,6 +233,18 @@
             transform: none;
         }
 
+        .btn-secondary {
+            background: transparent;
+            border: 1.5px solid rgba(16, 185, 129, 0.4);
+            color: #10b981;
+            box-shadow: none;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(16, 185, 129, 0.05);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+        }
+
         /* List Items */
         .list-item {
             background: rgba(255, 255, 255, 0.02);
@@ -473,11 +485,11 @@
                         <option value="">No files found</option>
                     </select>
                 </div>
-                <button id="btn-parse-cdf" onclick="runIngestion()" disabled style="margin-bottom: 0.75rem;">
+                <button id="btn-parse-cdf" class="btn-secondary" onclick="runIngestion()" disabled style="margin-bottom: 0.75rem;">
                     <svg style="width: 18px; height: 18px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/></svg>
                     Ingest & Parse CDF
                 </button>
-                <button id="btn-full-pipeline" onclick="runFullPipeline()" disabled style="margin-bottom: 1rem; background: linear-gradient(135deg, var(--accent-purple) 0%, #6d28d9 100%); box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25);">
+                <button id="btn-full-pipeline" onclick="runFullPipeline()" disabled style="margin-bottom: 1rem; background: linear-gradient(135deg, var(--accent-purple) 0%, #6d28d9 100%); box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25); padding: 1.1rem 0.85rem; font-size: 1.1rem;">
                     <svg style="width: 18px; height: 18px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                     ⚡ Run Full Pipeline
                 </button>
@@ -523,7 +535,7 @@
                     <div id="step-enrich" class="step-card">
                         <div class="step-num">STAGE 04</div>
                         <div class="step-title">AI Enrichment</div>
-                        <button id="btn-enrich" class="step-action-btn" onclick="runEnrich()" disabled>Run T2</button>
+                        <button id="btn-enrich" class="step-action-btn" onclick="runEnrich()" disabled>Run AI Enrichment</button>
                     </div>
                 </div>
             </div>
@@ -634,6 +646,7 @@
 
         function populateRawFiles(files) {
             const selector = document.getElementById('select-raw-file');
+            const selectedVal = selector.value;
             selector.innerHTML = '';
             if (!files || files.length === 0) {
                 selector.innerHTML = '<option value="">No files in raw_data/</option>';
@@ -646,6 +659,9 @@
                 opt.textContent = f;
                 selector.appendChild(opt);
             });
+            if (selectedVal && files.includes(selectedVal)) {
+                selector.value = selectedVal;
+            }
             document.getElementById('btn-parse-cdf').disabled = false;
             document.getElementById('btn-full-pipeline').disabled = false;
         }
@@ -973,7 +989,7 @@
                 // Set default button texts
                 document.getElementById('btn-deconv').textContent = 'Run GNN';
                 document.getElementById('btn-match').textContent = 'Run matchms';
-                document.getElementById('btn-enrich').textContent = 'Run T2';
+                document.getElementById('btn-enrich').textContent = 'Run AI Enrichment';
 
                 if (isDeconv) {
                     document.getElementById('step-deconv').className = 'step-card complete';

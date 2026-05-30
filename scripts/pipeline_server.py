@@ -204,6 +204,10 @@ For each peak, suggest:
 
 Return ONLY a JSON array: [{{"peak_index": 1, "compound_class": "...", "confidence": "..."}}]"""
 
+    raw_text = None
+    model_used = "claude-t2 (deepseek-v4-flash:free)"
+    
+    # 1. Try LiteLLM first (15s timeout to fail fast)
     try:
         r = requests.post(
             f"{LITELLM_URL}/v1/chat/completions",
@@ -214,14 +218,59 @@ Return ONLY a JSON array: [{{"peak_index": 1, "compound_class": "...", "confiden
                 "max_tokens": 1024,
                 "temperature": 0.2,
             },
-            timeout=60,
+            timeout=15,
             proxies={"http": None, "https": None},
         )
         r.raise_for_status()
-    except requests.RequestException as e:
-        raise HTTPException(status_code=502, detail=f"LiteLLM T2 call failed: {e}")
+        raw_text = r.json()["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        print(f"[ENRICH] LiteLLM T2 failed for {req.sample_id} ({e}). Falling back to Claude proxy...")
 
-    raw_text = r.json()["choices"][0]["message"]["content"].strip()
+    # 2. Try direct Claude proxy fallback (the final boss)
+    if not raw_text:
+        antigravity_base = os.environ.get("ANTIGRAVITY_BASE_URL", "http://localhost:8080")
+        antigravity_model = os.environ.get("ANTIGRAVITY_MODEL", "claude-sonnet-4-6")
+        url = f"{antigravity_base}/messages" if "/v1" in antigravity_base else f"{antigravity_base}/v1/messages"
+        
+        models_to_try = ["gemini-3-flash-agent", antigravity_model, "gemini-3.1-pro-high"]
+        for current_model in models_to_try:
+            try:
+                print(f"[ENRICH] Querying Claude proxy with model {current_model}...")
+                r = requests.post(
+                    url,
+                    headers={"Content-Type": "application/json"},
+                    json={
+                        "model": current_model,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "max_tokens": 2000,
+                        "temperature": 0.2,
+                    },
+                    timeout=25,
+                    proxies={"http": None, "https": None},
+                )
+                r.raise_for_status()
+                response_json = r.json()
+                
+                content = ""
+                if "content" in response_json:
+                    content = "".join([c["text"] for c in response_json["content"] if c.get("type") == "text"]).strip()
+                elif "text" in response_json:
+                    content = response_json["text"].strip()
+                    
+                if not content:
+                    thinking_content = "".join([c.get("thinking", "") for c in response_json.get("content", []) if c.get("type") == "thinking"]).strip()
+                    if thinking_content:
+                        content = thinking_content
+                        
+                if content:
+                    raw_text = content
+                    model_used = f"Claude Proxy ({current_model})"
+                    break
+            except Exception as proxy_err:
+                print(f"[ENRICH] Proxy query failed for model {current_model}: {proxy_err}")
+
+    if not raw_text:
+        raise HTTPException(status_code=502, detail="Both LiteLLM and Claude proxy fallbacks failed for AI enrichment.")
 
     # Try to parse JSON from response
     enriched = []
@@ -229,12 +278,33 @@ Return ONLY a JSON array: [{{"peak_index": 1, "compound_class": "...", "confiden
         # Extract JSON array if wrapped in markdown
         if "```" in raw_text:
             raw_text = raw_text.split("```")[1].replace("json", "").strip()
-        enriched = json.loads(raw_text)
-    except json.JSONDecodeError:
+        
+        # Robust regex fallback for JSON array extraction
+        import re
+        array_match = re.search(r"\[\s*\{.*\}\s*\]", raw_text, re.DOTALL)
+        if array_match:
+            raw_text = array_match.group(0)
+        else:
+            object_match = re.search(r"\{.*\}", raw_text, re.DOTALL)
+            if object_match:
+                raw_text = object_match.group(0)
+
+        enriched = json.loads(raw_text, strict=False) if hasattr(json, "loads") else json.loads(raw_text)
+    except Exception as parse_err:
+        print(f"[ENRICH] JSON Parse error for enrichment output: {parse_err}")
         enriched = [{"peak_index": i+1, "compound_class": "parse_error", "confidence": "low"} for i in range(len(req.peaks))]
 
+    if isinstance(enriched, dict):
+        for k, v in enriched.items():
+            if isinstance(v, list):
+                enriched = v
+                break
+    
+    if not isinstance(enriched, list):
+        enriched = [enriched]
+
     # Merge enrichment back into peaks
-    enriched_map = {e["peak_index"]: e for e in enriched}
+    enriched_map = {e.get("peak_index", i+1): e for i, e in enumerate(enriched)}
     peaks_enriched = []
     for i, p in enumerate(req.peaks):
         merged = {**p, **(enriched_map.get(i+1, {}))}
@@ -245,9 +315,10 @@ Return ONLY a JSON array: [{{"peak_index": 1, "compound_class": "...", "confiden
     output_file.write_text(json.dumps({
         "sample_id": req.sample_id,
         "enriched_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
-        "model_used": "claude-t2 (deepseek-v4-flash:free)",
+        "model_used": model_used,
         "peaks": peaks_enriched,
     }, indent=2))
+
 
     return {
         "status": "ok",

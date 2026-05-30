@@ -126,95 +126,115 @@ def load_mgf_library(mgf_path: Path) -> list[Spectrum]:
     return list(load_from_mgf(str(mgf_path)))
 
 
-def query_public_db_via_llm(peak: dict, sample_id: str) -> dict:
-    """Fallback: query the LiteLLM T2/T3 public standard database matching endpoint.
-    If LiteLLM fails (rate limit/no credit), fall back to the Claude proxy as the final boss."""
-    mz = peak.get("mz_values", [])
-    intensities = peak.get("intensity_values", [])
-    if not mz or not intensities:
-        return None
+def query_public_db_batch_via_llm(peaks_to_query: list[dict], sample_id: str) -> dict[int, dict]:
+    """Query the LiteLLM/proxy public database matching endpoint for a batch of peaks.
+    Returns a dict mapping peak_index to match dictionary."""
+    if not peaks_to_query:
+        return {}
 
-    # Get top 10 fragments sorted by intensity descending
-    indices = np.argsort(intensities)[::-1][:10]
-    top_mz = [mz[idx] for idx in indices]
-    top_int = [intensities[idx] for idx in indices]
+    # Format spectrum for each peak in the batch
+    peaks_formatted = []
+    for peak in peaks_to_query:
+        mz = peak.get("mz_values", [])
+        intensities = peak.get("intensity_values", [])
+        if not mz or not intensities:
+            continue
+        
+        # Get top 10 fragments sorted by intensity descending
+        indices = np.argsort(intensities)[::-1][:10]
+        top_mz = [mz[idx] for idx in indices]
+        top_int = [intensities[idx] for idx in indices]
 
-    # Normalize intensities relative to base peak
-    base_int = top_int[0] if top_int else 1.0
-    if base_int <= 0:
-        base_int = 1.0
-    rel_int = [int(round((val / base_int) * 100)) for val in top_int]
+        # Normalize intensities relative to base peak
+        base_int = top_int[0] if top_int else 1.0
+        if base_int <= 0:
+            base_int = 1.0
+        rel_int = [int(round((val / base_int) * 100)) for val in top_int]
 
-    # Format spectrum string
-    spec_str = ", ".join(f"m/z {m} ({ri}%)" for m, ri in zip(top_mz, rel_int))
-    rt = peak.get("retention_time", 0.0)
+        # Format spectrum string
+        spec_str = ", ".join(f"m/z {m} ({ri}%)" for m, ri in zip(top_mz, rel_int))
+        rt = peak.get("retention_time", 0.0)
+        p_idx = peak.get("peak_index")
+        
+        peaks_formatted.append(f"- Peak {p_idx} (RT={rt:.2f} min): {spec_str}")
 
-    import requests
-    LITELLM_URL = "http://localhost:4000"
+    if not peaks_formatted:
+        return {}
+
+    peaks_summary_str = "\n".join(peaks_formatted)
 
     prompt = f"""You are a mass spectrometry database search engine (such as NIST or MassBank). 
-Analyze this electron ionization (EI) GC-MS mass spectrum of a peak detected at retention time {rt:.2f} min in sample '{sample_id}':
+Analyze the electron ionization (EI) GC-MS mass spectra of these peaks detected in sample '{sample_id}':
 
-Mass spectrum (top fragments and relative intensities):
-{spec_str}
+{peaks_summary_str}
 
-Identify the compound using your public chemical standards knowledge database. 
-Return ONLY a JSON object with these keys:
+Identify each compound using your public chemical standards knowledge database. 
+Return ONLY a JSON array where each item corresponds to one of the queried peaks, containing these keys:
+- "peak_index": The integer index of the peak
 - "compound_name": Suggest a specific chemical name (lowercase)
 - "compound_class": Suggest its chemical class (alcohol, alkane, ester, acid, aromatic, terpene, ketone, amine, unknown)
 - "cosine_similarity": A float between 0.70 and 1.00 representing your match confidence.
 
-Return ONLY raw JSON, do not include markdown or wrapping.
+Return ONLY raw JSON, do not include markdown wrapper or conversational text.
 """
-    # 1. Try LiteLLM first (15s timeout to fail fast)
+
+    import requests
+    LITELLM_URL = "http://localhost:4000"
+
+    # 1. Try LiteLLM first (25s timeout to fail fast)
     try:
+        print(f"[PUBLIC DB BATCH] Querying LiteLLM first for {len(peaks_to_query)} peaks...")
         r = requests.post(
             f"{LITELLM_URL}/v1/chat/completions",
             headers={"Authorization": "Bearer sk-litellm-1234", "Content-Type": "application/json"},
             json={
                 "model": "claude-t1",
                 "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": 200,
+                "max_tokens": 2000,
                 "temperature": 0.1,
             },
-            timeout=15,
+            timeout=25,
             proxies={"http": None, "https": None},
         )
         r.raise_for_status()
         content = r.json()["choices"][0]["message"]["content"].strip()
         if "```" in content:
             content = content.split("```")[1].replace("json", "").strip()
-        res = json.loads(content)
-        return {
-            "compound_name": res.get("compound_name", "unknown"),
-            "compound_class": res.get("compound_class", "unknown"),
-            "cosine_similarity": float(res.get("cosine_similarity", 0.7)),
-            "n_fragments_matched": len(top_mz),
-        }
+        res_list = json.loads(content)
+        results_map = {}
+        for item in res_list:
+            p_idx = item.get("peak_index")
+            if p_idx is not None:
+                results_map[int(p_idx)] = {
+                    "compound_name": item.get("compound_name", "unknown"),
+                    "compound_class": item.get("compound_class", "unknown"),
+                    "cosine_similarity": float(item.get("cosine_similarity", 0.7)),
+                }
+        return results_map
     except Exception as e:
-        print(f"[PUBLIC DB] LiteLLM failed for peak {peak.get('peak_index')} ({e}). Falling back to Claude proxy...")
+        print(f"[PUBLIC DB BATCH] LiteLLM failed for batch ({e}). Falling back to Claude proxy...")
 
     # 2. Direct Anthropic-style proxy fallback (the final boss)
     antigravity_base = os.environ.get("ANTIGRAVITY_BASE_URL", "http://localhost:8080")
     antigravity_model = os.environ.get("ANTIGRAVITY_MODEL", "claude-sonnet-4-6")
     
-    # Ensure we route to standard Anthropic messages API endpoint
     url = f"{antigravity_base}/messages" if "/v1" in antigravity_base else f"{antigravity_base}/v1/messages"
     
-    models_to_try = [antigravity_model, "gemini-3-flash-agent", "gemini-3.1-pro-high"]
+    # We query gemini-3-flash-agent first to avoid exhausted Claude accounts on the proxy
+    models_to_try = ["gemini-3-flash-agent", antigravity_model, "gemini-3.1-pro-high"]
     for current_model in models_to_try:
         try:
-            print(f"[PUBLIC DB] Querying Claude proxy with model {current_model}...")
+            print(f"[PUBLIC DB BATCH] Querying Claude proxy with model {current_model}...")
             r = requests.post(
                 url,
                 headers={"Content-Type": "application/json"},
                 json={
                     "model": current_model,
                     "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": 2000,  # Ensure thinking block + JSON output fit
+                    "max_tokens": 4000,
                     "temperature": 0.1,
                 },
-                timeout=25,  # 25 seconds timeout per model attempt
+                timeout=45,
                 proxies={"http": None, "https": None},
             )
             r.raise_for_status()
@@ -227,38 +247,54 @@ Return ONLY raw JSON, do not include markdown or wrapping.
                 content = response_json["text"].strip()
                 
             if not content:
-                # Fallback: extract from thinking block if text content is empty
                 thinking_content = "".join([c.get("thinking", "") for c in response_json.get("content", []) if c.get("type") == "thinking"]).strip()
                 if thinking_content:
                     content = thinking_content
                     
             if not content:
-                print(f"[PUBLIC DB] Empty response returned by proxy for model {current_model}. Trying next...")
+                print(f"[PUBLIC DB BATCH] Empty response returned by proxy for model {current_model}. Trying next...")
                 continue
                 
             import re
-            json_match = re.search(r"\{.*\}", content, re.DOTALL)
+            json_match = re.search(r"\[\s*\{.*\}\s*\]", content, re.DOTALL)
             if json_match:
                 json_str = json_match.group(0)
-                try:
-                    res = json.loads(json_str, strict=False)
-                except Exception:
-                    res = json.loads(json_str)
             else:
-                if "```" in content:
-                    content = content.split("```")[1].replace("json", "").strip()
-                res = json.loads(content, strict=False)
-            return {
-                "compound_name": res.get("compound_name", "unknown"),
-                "compound_class": res.get("compound_class", "unknown"),
-                "cosine_similarity": float(res.get("cosine_similarity", 0.7)),
-                "n_fragments_matched": len(top_mz),
-            }
-        except Exception as proxy_err:
-            print(f"[PUBLIC DB] Proxy query failed for model {current_model}: {proxy_err}")
+                json_match_obj = re.search(r"\{.*\}", content, re.DOTALL)
+                json_str = json_match_obj.group(0) if json_match_obj else content
+                
+            if "```" in json_str:
+                json_str = json_str.split("```")[1].replace("json", "").strip()
+                
+            try:
+                res_list = json.loads(json_str, strict=False)
+            except Exception:
+                res_list = json.loads(json_str)
+
+            if isinstance(res_list, dict):
+                for k, v in res_list.items():
+                    if isinstance(v, list):
+                        res_list = v
+                        break
             
-    print(f"[PUBLIC DB MATCH ERROR] Failed all LiteLLM and proxy fallbacks for peak {peak.get('peak_index')}")
-    return None
+            if not isinstance(res_list, list):
+                res_list = [res_list]
+
+            results_map = {}
+            for item in res_list:
+                p_idx = item.get("peak_index")
+                if p_idx is not None:
+                    results_map[int(p_idx)] = {
+                        "compound_name": item.get("compound_name", "unknown"),
+                        "compound_class": item.get("compound_class", "unknown"),
+                        "cosine_similarity": float(item.get("cosine_similarity", 0.7)),
+                    }
+            return results_map
+        except Exception as proxy_err:
+            print(f"[PUBLIC DB BATCH] Proxy query failed for model {current_model}: {proxy_err}")
+            
+    print("[PUBLIC DB BATCH ERROR] Failed all LiteLLM and proxy fallbacks for this batch")
+    return {}
 
 
 def match_peaks(peaks_data: dict, library: list[Spectrum]) -> dict:
@@ -277,6 +313,9 @@ def match_peaks(peaks_data: dict, library: list[Spectrum]) -> dict:
     if not queries or not library:
         return {
             "sample_id": sample_id,
+            "deconvolution": peaks_data.get("deconvolution", "incomplete"),
+            "n_regions": peaks_data.get("n_regions"),
+            "n_coeluting_regions": peaks_data.get("n_coeluting_regions"),
             "matches": [],
             "unmatched_peaks": list(range(len(peaks))),
             "match_count": 0,
@@ -308,12 +347,12 @@ def match_peaks(peaks_data: dict, library: list[Spectrum]) -> dict:
                         rt_min = ref_spec.metadata.get("rt_window_min", 0)
                         rt_max = ref_spec.metadata.get("rt_window_max", float("inf"))
                         if rt_min <= rt <= rt_max or rt_min == 0:
-                            best_score = float(score_val)
-                            best_match = {
-                                "compound_name": ref_spec.metadata.get("compound_name", "unknown"),
-                                "compound_class": ref_spec.metadata.get("compound_class", "unknown"),
-                                "n_fragments_matched": int(n_matched),
-                            }
+                             best_score = float(score_val)
+                             best_match = {
+                                 "compound_name": ref_spec.metadata.get("compound_name", "unknown"),
+                                 "compound_class": ref_spec.metadata.get("compound_class", "unknown"),
+                                 "n_fragments_matched": int(n_matched),
+                             }
                 break
 
         if best_match and best_score >= SIMILARITY_THRESHOLD:
@@ -326,7 +365,7 @@ def match_peaks(peaks_data: dict, library: list[Spectrum]) -> dict:
             })
             matched_indices.add(peak_idx)
 
-    # Phase 2: Fallback to public database query via LLM for top unmatched peaks (max 10 by area/height)
+    # Phase 2: Fallback to public database query via LLM for unmatched peaks
     unmatched_peaks_to_query = []
     for peak_idx in query_peak_map:
         if peak_idx not in matched_indices:
@@ -340,28 +379,39 @@ def match_peaks(peaks_data: dict, library: list[Spectrum]) -> dict:
         reverse=True
     )
 
-    # Query LLM for at most 10 peaks to avoid timeout and token exhaustion
-    max_llm_queries = 10
-    for idx in unmatched_peaks_to_query[:max_llm_queries]:
-        peak = peaks[idx]
-        print(f"[PUBLIC DB] Querying public database for Peak {peak.get('peak_index')} (RT={peak.get('retention_time')} min, Area={peak.get('peak_area_mAU')})...")
-        llm_match = query_public_db_via_llm(peak, sample_id)
-        if llm_match and llm_match.get("cosine_similarity", 0.0) >= SIMILARITY_THRESHOLD:
-            matches.append({
-                "peak_index": peak.get("peak_index"),
-                "retention_time": peak.get("retention_time"),
-                "peak_area_mAU": peak.get("peak_area_mAU"),
-                "cosine_similarity": round(llm_match["cosine_similarity"], 4),
-                "compound_name": llm_match["compound_name"],
-                "compound_class": llm_match["compound_class"],
-                "n_fragments_matched": llm_match["n_fragments_matched"],
-            })
-            matched_indices.add(idx)
+    # Query LLM for at most 20 peaks in a single batch request to avoid timeout and token limits
+    max_llm_queries = 20
+    peaks_to_send = [peaks[idx] for idx in unmatched_peaks_to_query[:max_llm_queries]]
+
+    if peaks_to_send:
+        print(f"[PUBLIC DB] Batch querying public database for {len(peaks_to_send)} unmatched peaks...")
+        batch_matches = query_public_db_batch_via_llm(peaks_to_send, sample_id)
+        
+        for idx in unmatched_peaks_to_query[:max_llm_queries]:
+            peak = peaks[idx]
+            p_idx = peak.get("peak_index")
+            llm_match = batch_matches.get(p_idx)
+            
+            if llm_match and llm_match.get("cosine_similarity", 0.0) >= SIMILARITY_THRESHOLD:
+                n_frags = len(peak.get("mz_values", []))
+                matches.append({
+                    "peak_index": p_idx,
+                    "retention_time": peak.get("retention_time"),
+                    "peak_area_mAU": peak.get("peak_area_mAU"),
+                    "cosine_similarity": round(llm_match["cosine_similarity"], 4),
+                    "compound_name": llm_match["compound_name"],
+                    "compound_class": llm_match["compound_class"],
+                    "n_fragments_matched": min(n_frags, 10),
+                })
+                matched_indices.add(idx)
 
     unmatched = [i for i in range(len(peaks)) if i not in matched_indices]
 
     return {
         "sample_id": sample_id,
+        "deconvolution": peaks_data.get("deconvolution", "incomplete"),
+        "n_regions": peaks_data.get("n_regions"),
+        "n_coeluting_regions": peaks_data.get("n_coeluting_regions"),
         "peaks": peaks,
         "matches": matches,
         "unmatched_peaks": unmatched,
@@ -369,6 +419,7 @@ def match_peaks(peaks_data: dict, library: list[Spectrum]) -> dict:
         "total_peaks": len(peaks),
         "similarity_threshold": SIMILARITY_THRESHOLD,
     }
+
 
 
 def run_spectral_match(input_path: str, library_path: str = None) -> dict:
