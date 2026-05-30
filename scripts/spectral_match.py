@@ -181,7 +181,7 @@ Return ONLY raw JSON, do not include markdown wrapper or conversational text.
     import requests
     LITELLM_URL = "http://localhost:4000"
 
-    # 1. Try LiteLLM first (25s timeout to fail fast)
+    # 1. Try LiteLLM first (5s timeout to fail fast)
     try:
         print(f"[PUBLIC DB BATCH] Querying LiteLLM first for {len(peaks_to_query)} peaks...")
         r = requests.post(
@@ -193,7 +193,7 @@ Return ONLY raw JSON, do not include markdown wrapper or conversational text.
                 "max_tokens": 2000,
                 "temperature": 0.1,
             },
-            timeout=25,
+            timeout=5,
             proxies={"http": None, "https": None},
         )
         r.raise_for_status()
@@ -379,31 +379,33 @@ def match_peaks(peaks_data: dict, library: list[Spectrum]) -> dict:
         reverse=True
     )
 
-    # Query LLM for at most 20 peaks in a single batch request to avoid timeout and token limits
-    max_llm_queries = 20
-    peaks_to_send = [peaks[idx] for idx in unmatched_peaks_to_query[:max_llm_queries]]
-
-    if peaks_to_send:
-        print(f"[PUBLIC DB] Batch querying public database for {len(peaks_to_send)} unmatched peaks...")
-        batch_matches = query_public_db_batch_via_llm(peaks_to_send, sample_id)
+    # Query LLM for all unmatched peaks in batches of 15 to avoid exceeding token and output limits
+    chunk_size = 15
+    for start_i in range(0, len(unmatched_peaks_to_query), chunk_size):
+        chunk_indices = unmatched_peaks_to_query[start_i:start_i + chunk_size]
+        peaks_to_send = [peaks[idx] for idx in chunk_indices]
         
-        for idx in unmatched_peaks_to_query[:max_llm_queries]:
-            peak = peaks[idx]
-            p_idx = peak.get("peak_index")
-            llm_match = batch_matches.get(p_idx)
+        if peaks_to_send:
+            print(f"[PUBLIC DB] Batch querying public database for peaks {start_i+1} to {start_i+len(peaks_to_send)} of {len(unmatched_peaks_to_query)} unmatched peaks...")
+            batch_matches = query_public_db_batch_via_llm(peaks_to_send, sample_id)
             
-            if llm_match and llm_match.get("cosine_similarity", 0.0) >= SIMILARITY_THRESHOLD:
-                n_frags = len(peak.get("mz_values", []))
-                matches.append({
-                    "peak_index": p_idx,
-                    "retention_time": peak.get("retention_time"),
-                    "peak_area_mAU": peak.get("peak_area_mAU"),
-                    "cosine_similarity": round(llm_match["cosine_similarity"], 4),
-                    "compound_name": llm_match["compound_name"],
-                    "compound_class": llm_match["compound_class"],
-                    "n_fragments_matched": min(n_frags, 10),
-                })
-                matched_indices.add(idx)
+            for idx in chunk_indices:
+                peak = peaks[idx]
+                p_idx = peak.get("peak_index")
+                llm_match = batch_matches.get(p_idx)
+                
+                if llm_match and llm_match.get("cosine_similarity", 0.0) >= SIMILARITY_THRESHOLD:
+                    n_frags = len(peak.get("mz_values", []))
+                    matches.append({
+                        "peak_index": p_idx,
+                        "retention_time": peak.get("retention_time"),
+                        "peak_area_mAU": peak.get("peak_area_mAU"),
+                        "cosine_similarity": round(llm_match["cosine_similarity"], 4),
+                        "compound_name": llm_match["compound_name"],
+                        "compound_class": llm_match["compound_class"],
+                        "n_fragments_matched": min(n_frags, 10),
+                    })
+                    matched_indices.add(idx)
 
     unmatched = [i for i in range(len(peaks)) if i not in matched_indices]
 

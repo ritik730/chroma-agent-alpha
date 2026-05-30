@@ -672,8 +672,27 @@ def run_full_pipeline(req: ParseRequest):
             print("[FULL PIPELINE] Matching timed out after 300s.")
             pass
 
+    # Enrich
+    matched_output = PROC_DIR / f"{sample_id}_matched.json"
+    if matched_output.exists():
+        try:
+            matched_data = json.loads(matched_output.read_text())
+            peaks = matched_data.get("peaks", [])
+            if peaks:
+                enrich_req = EnrichRequest(
+                    sample_id=sample_id,
+                    peaks=peaks,
+                    context="GC-MS chromatography, chemical analysis"
+                )
+                run_enrich(enrich_req)
+                stages_completed.append("enrich")
+        except Exception as enrich_err:
+            print(f"[FULL PIPELINE] AI enrichment failed: {enrich_err}")
+
     # Load final result
-    final_file = PROC_DIR / f"{sample_id}_matched.json"
+    final_file = PROC_DIR / f"{sample_id}_enriched.json"
+    if not final_file.exists():
+        final_file = PROC_DIR / f"{sample_id}_matched.json"
     if not final_file.exists():
         final_file = PROC_DIR / f"{sample_id}_deconvolved.json"
     if not final_file.exists():
