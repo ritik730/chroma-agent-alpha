@@ -115,6 +115,18 @@ def parse_cdf(filepath: str) -> dict:
 
     peaks = detect_peaks(rt, corrected)
 
+    ds = nc.Dataset(filepath, "r")
+    if "scan_index" in ds.variables and "mass_values" in ds.variables and "intensity_values" in ds.variables and "point_count" in ds.variables:
+        for p in peaks:
+            idx = p["peak_index"]
+            if idx < len(ds.variables["scan_index"]):
+                start_ptr = int(ds.variables["scan_index"][idx])
+                count = int(ds.variables["point_count"][idx])
+                if count > 0:
+                    p["mz_values"] = [round(float(m), 2) for m in ds.variables["mass_values"][start_ptr : start_ptr + count]]
+                    p["intensity_values"] = [round(float(val), 1) for val in ds.variables["intensity_values"][start_ptr : start_ptr + count]]
+    ds.close()
+
     total_area, peak_sum = validate_total_area(rt, corrected, peaks)
 
     sample_id = Path(filepath).stem
