@@ -4,15 +4,25 @@ echo ========================================
 echo  CHROMA-AGENT-ALPHA // TRI-STACK v5
 echo ========================================
 echo.
-echo [1/3] Starting LiteLLM proxy on port 4000...
+echo [1/4] Checking Antigravity Claude Proxy on port 8080...
+netstat -ano | findstr :8080 | findstr LISTENING >nul
+if %errorlevel% neq 0 (
+    echo Starting Antigravity Claude Proxy...
+    call acc start
+) else (
+    echo Antigravity Claude Proxy is already running.
+)
+echo.
+
+echo [2/4] Starting LiteLLM proxy on port 4000...
 start "LiteLLM Proxy" /d "C:\chroma-agent-alpha" "C:\chroma-agent-alpha\venv\Scripts\litellm.exe" --config C:\chroma-agent-alpha\litellm_config.yaml
 timeout /t 4 /nobreak >nul
 
-echo [2/3] Starting Pipeline Server on port 8001...
+echo [3/4] Starting Pipeline Server on port 8001...
 start "Pipeline Server" "C:\chroma-agent-alpha\venv\Scripts\python.exe" C:\chroma-agent-alpha\scripts\pipeline_server.py
 timeout /t 3 /nobreak >nul
 
-echo [3/3] Wiring Claude Code to LiteLLM...
+echo [4/4] Wiring Claude Code to LiteLLM...
 set ANTHROPIC_BASE_URL=http://localhost:4000
 set ANTHROPIC_API_KEY=sk-litellm-1234
 set ANTHROPIC_AUTH_TOKEN=
