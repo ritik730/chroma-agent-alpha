@@ -1,9 +1,9 @@
 # GSD Persistent State Map — CHROMA-AGENT-ALPHA
 
 ## Current Project Phase
-- **Phase**: Optimization, Derivatization & Cost Governance
+- **Phase**: Ingestion & Deconvolution Robustness
 - **Status**: Stable
-- **Active Task**: Integrated Antigravity Claude Proxy (`acc start`/`acc stop`) directly into all repository service triggers (`start.cmd`, `start_all_services.cmd`, and `stop_all_services.cmd`) with netstat port guards to prevent duplicate instances. Also integrated automated startup checks directly into PowerShell profile launcher scripts (`_claude-base`, `claude-switch`, `litellm-start`, `chroma-start`) to ensure the proxy is online whenever the Chroma-agent-alpha CLI model brains are initialized.
+- **Active Task**: Successfully integrated native Python preprocessing and ingestion support for Varian `.xms`/`.sms` files in the pipeline. Implemented binary decoding with a 12-bit mask override to prevent overflows, created a unified file format loader `load_any_file`, and updated `parse_cdf.py`, `data_store.py`, and `pipeline_server.py`. Validated the entire 4-stage pipeline autonomously, producing correctly enriched compound matches and Excel reports without external dependencies.
 
 ---
 
