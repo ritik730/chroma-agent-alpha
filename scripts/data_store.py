@@ -149,7 +149,17 @@ def save_run_to_zarr(
     peak_rt = np.array([p.get("retention_time", 0.0) for p in peaks], dtype=np.float32)
     peak_height = np.array([p.get("peak_height_mAU", 0.0) for p in peaks], dtype=np.float32)
     peak_area = np.array([p.get("peak_area_mAU", 0.0) for p in peaks], dtype=np.float32)
-    peak_purity = np.array([p.get("component_purity", 1.0) for p in peaks], dtype=np.float32)
+    
+    # Resolve GNN purity with proper fallbacks
+    peak_purity_list = []
+    for p in peaks:
+        pv = p.get("component_purity")
+        if pv is None:
+            pv = 1.0 if not p.get("coeluting", False) else 0.5
+        peak_purity_list.append(pv)
+    peak_purity = np.array(peak_purity_list, dtype=np.float32)
+    
+    peak_corrected_area = peak_area * peak_purity
     peak_coeluting = np.array([1 if p.get("coeluting", False) else 0 for p in peaks], dtype=np.int8)
     
     peak_compound_name = [p.get("compound_name", "unknown") for p in peaks]
@@ -225,7 +235,12 @@ def save_run_to_zarr(
             
             if c_std > 0 and r_std_val > 0:
                 rf = r_std_val / c_std
-                r_spl = p.get("peak_area_mAU", 0.0)
+                
+                # Apply GNN purity to integration area to correct for co-eluting peaks
+                purity_val = p.get("component_purity")
+                if purity_val is None:
+                    purity_val = 1.0 if not p.get("coeluting", False) else 0.5
+                r_spl = p.get("peak_area_mAU", 0.0) * purity_val
                 
                 if rf > 0 and sample_weight > 0:
                     ppm_computed = r_spl / (rf * sample_weight)
@@ -260,6 +275,9 @@ def save_run_to_zarr(
     
     pp_arr = sample_group.create_array("peak_purity", shape=peak_purity.shape, dtype="float32")
     pp_arr[:] = peak_purity
+    
+    pca_arr = sample_group.create_array("peak_corrected_area", shape=peak_corrected_area.shape, dtype="float32")
+    pca_arr[:] = peak_corrected_area
     
     pc_arr = sample_group.create_array("peak_coeluting", shape=peak_coeluting.shape, dtype="int8")
     pc_arr[:] = peak_coeluting
