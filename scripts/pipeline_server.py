@@ -879,7 +879,7 @@ def create_excel_report(
     title_cell.alignment = Alignment(horizontal="center", vertical="center")
 
     # Metadata row
-    ws.merge_cells("A2:O2")
+    ws.merge_cells("A2:P2")
     meta_cell = ws["A2"]
     meta_cell.value = f"Generated: {time.strftime('%Y-%m-%d %H:%M:%S')} | Sample Weight: {sample_weight:.4f} g | API Conc: {api_conc:.4f} mg/mL | Total Peaks: {len(peaks)}"
     meta_cell.font = Font(name="Calibri", size=9, italic=True, color="808080")
@@ -888,6 +888,7 @@ def create_excel_report(
     # Headers
     headers = [
         "Peak Index", "RT (min)", "Height (mAU)", "Area (mAU·min)", "GNN Purity", 
+        "Corrected Area (mAU·min)",
         "Compound ID", "Compound Class", "Match Score", "Fragments Matched",
         "Std Area (rStd)", "Response Factor", "USP Limit (ppm)", "Quantified ppm", "Solvent Content (%)", "Compliance"
     ]
@@ -984,8 +985,8 @@ def create_excel_report(
                     r_std = r_std_val
                     rf_val = round(r_std_val / c_std, 4)
                     
-                    # ppm = rSpl / (RF * Wspl)
-                    r_spl = p.get("peak_area_mAU", 0.0)
+                    # ppm = rSpl / (RF * Wspl) - Corrected using GNN Purity to avoid co-elution errors
+                    r_spl = p.get("peak_area_mAU", 0.0) * purity_val
                     if rf_val > 0 and sample_weight > 0:
                         ppm_computed = r_spl / (rf_val * sample_weight)
                         ppm_val = round(ppm_computed, 2)
@@ -1011,6 +1012,7 @@ def create_excel_report(
             round(p.get("peak_height_mAU", 0), 2),
             round(p.get("peak_area_mAU", 0), 2),
             purity_display,
+            round(p.get("peak_area_mAU", 0.0) * purity_val, 2), # Corrected Area
             comp_name,
             comp_class,
             score,
@@ -1031,7 +1033,7 @@ def create_excel_report(
             cell.fill = row_fill
             
             # Format compliance text font specially
-            if col_idx == 15: # Compliance column
+            if col_idx == 16: # Compliance column
                 if val == "FAIL":
                     cell.font = fail_font
                 elif val == "PASS":
@@ -1084,7 +1086,13 @@ def create_excel_report(
                 r_std_val = float(cal.get("rStd", 0))
                 if c_std > 0 and r_std_val > 0:
                     rf = r_std_val / c_std
-                    r_spl = p.get("peak_area_mAU", 0.0)
+                    
+                    # Resolve GNN purity for summary stats compliance consistency
+                    purity_val_c = p.get("component_purity")
+                    if purity_val_c is None:
+                        purity_val_c = 1.0 if not p.get("coeluting", False) else 0.5
+                        
+                    r_spl = p.get("peak_area_mAU", 0.0) * purity_val_c
                     if rf > 0 and sample_weight > 0:
                         ppm_c = r_spl / (rf * sample_weight)
                         if ppm_c > limit_val:
