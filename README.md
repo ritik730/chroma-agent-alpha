@@ -143,4 +143,4 @@ This pipeline is documented in the manuscript:
 
 ---
 
-*Built by Devendra Kataria — MSc Chemistry (82%), Technical Lead & Informatics Researcher.*
+*Built by [Devendra Kataria](https://www.linkedin.com/in/devendra-kataria-01b373385/) — MSc Chemistry (82%), Technical Lead & Informatics Researcher.*

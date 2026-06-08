@@ -1,6 +1,6 @@
 # Agentic Orchestration for Automated Chromatography: A Tiered AI Framework for Lab 4.0 Telemetry
 
-**Author**: Devendra Kataria
+**Author**: [Devendra Kataria](https://www.linkedin.com/in/devendra-kataria-01b373385/)
 **Target Journal**: SLAS Technology
 **Target Submission**: October 2026
 
