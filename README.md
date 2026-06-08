@@ -55,7 +55,9 @@ To satisfy strict budget constraints, the pipeline uses a custom LiteLLM proxy (
 | **T2 Analyst** | `deepseek/deepseek-v4-flash:free` | Memory summaries, text enrichment, class mappings | ₹0 / call |
 | **T3 Architect** | `deepseek/deepseek-v4-flash` | Coding, GNN model configuration, pipeline execution | ~₹0.011 / call |
 | **T3-CoT** | `deepseek-r1-distill-qwen-32b` | Complex mathematical/logical reasoning, deconv audits | ~₹0.030 / call |
-| **T4 Antigravity**| Claude Sonnet/Opus via Proxy | Manuscript writing, PhD cover letters (Manual Only) | Weekly token quota |
+| **T4 Fallback**| `Claude Sonnet/Opus (local proxy)` | Final automated pipeline fallback (triggered if T1/T2/T3 fails) | Capped by weekly proxy quota |
+
+*Note: For manual tasks such as manuscript prose writing and PhD cover letters, the **Antigravity** proxy is the preferred option and is accessed directly.*
 
 ---
 

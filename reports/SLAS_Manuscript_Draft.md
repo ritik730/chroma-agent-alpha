@@ -63,8 +63,9 @@ To ensure strict cost governance under a hard ₹500/month budget ceiling, the A
 * **Tier 1 (Scout - Cloud):** Mapped to `google/gemini-2.5-flash-lite` via OpenRouter (`claude-t1`). Handles fast, low-cost classification, routing labels, and formatting tasks.
 * **Tier 2 (Analyst - Free):** Mapped to `deepseek/deepseek-v4-flash:free` (`claude-t2`). Reserved for non-coding tasks like summarizing, enriching, and compacting memory.
 * **Tier 3 (Architect - Paid):** Mapped to `deepseek/deepseek-v4-flash` (`claude-t3`). Handles standard coding requests, GNN deconvolution training, and chromatography pipeline integrations.
-* **Tier 3-COT (Architect - CoT):** Mapped to `deepseek/deepseek-r1-distill-qwen-32b` (`claude-t3-cot`). Reserved for complex architectural reasoning and manuscript generation.
-* **Tier 4 (Antigravity - Claude Proxy):** Routes queries to Claude Sonnet/Opus through a secure proxy (`localhost:8080`) for high-level manuscript drafting and PhD SOP generation, protected by a weekly token limit and local caching.
+* **Tier 3-COT (Architect - CoT):** Mapped to `deepseek/deepseek-r1-distill-qwen-32b` (`claude-t3-cot`). Reserved for complex architectural and GNN reasoning tasks.
+* **Tier 4 (Fallback - Automated):** Mapped to local Claude Sonnet/Opus proxy (`localhost:8080`). Serves as a final fallback triggered automatically if T1/T2/T3 fails in the pipeline execution loop.
+* **Antigravity (Manual - Preferred):** Mapped to Claude Sonnet/Opus proxy (`localhost:8080`). Direct, preferred manual option used by the developer for long-form manuscript prose writing, PhD cover letters, and research statements.
 
 ### 2.4 Server Security & Hardening
 
