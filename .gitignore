@@ -6,6 +6,11 @@ __pycache__/
 node_modules/
 dist/
 memory/tier-usage.jsonl
-raw_data/*.cdf
-raw_data/*.CDF
-processed/*.json
+
+# Ignore raw data and intermediate outputs
+raw_data/*
+!raw_data/.gitkeep
+processed/*
+!processed/.gitkeep
+processed_results/*
+!processed_results/.gitkeep

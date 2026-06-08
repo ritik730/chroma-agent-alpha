@@ -26,7 +26,7 @@ from torch_geometric.data import Data
 from torch_geometric.nn import GCNConv
 
 BASE_DIR = Path(os.environ.get("CHROMA_BASE_DIR", Path(__file__).parent.parent))
-PROC_DIR = BASE_DIR / "processed"
+PROC_DIR = BASE_DIR / "processed" / ".cache"
 
 TEMPORAL_PROXIMITY_THRESHOLD = 0.5
 CORRELATION_THRESHOLD = 0.3
@@ -248,7 +248,7 @@ def deconvolve_peaks(peaks_data: dict) -> dict:
 
         for comp_idx, pi in enumerate(region_indices):
             comp_mask = assignments == comp_idx
-            purity = float(max_probs[comp_mask].mean()) if comp_mask.any() else 0.0
+            purity = float(max_probs[comp_mask].mean()) if comp_mask.any() else 0.5
             n_assigned = int(comp_mask.sum())
 
             deconv_results.append({

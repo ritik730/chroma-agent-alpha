@@ -24,9 +24,9 @@ from matchms.similarity import CosineGreedy
 BASE_DIR = Path(os.environ.get("CHROMA_BASE_DIR", Path(__file__).parent.parent))
 load_dotenv(dotenv_path=BASE_DIR / ".env")
 
-PROC_DIR = BASE_DIR / "processed"
+PROC_DIR = BASE_DIR / "processed" / ".cache"
 REF_DIR = BASE_DIR / "references"
-SIMILARITY_THRESHOLD = 0.7
+SIMILARITY_THRESHOLD = 0.6
 NOISE_THRESHOLD_PCT = 0.01
 
 
@@ -126,7 +126,7 @@ def load_mgf_library(mgf_path: Path) -> list[Spectrum]:
     return list(load_from_mgf(str(mgf_path)))
 
 
-def query_public_db_batch_via_llm(peaks_to_query: list[dict], sample_id: str) -> dict[int, dict]:
+def query_public_db_batch_via_llm(peaks_to_query: list[dict], sample_id: str, failed_models: set = None) -> dict[int, dict]:
     """Query the LiteLLM/proxy public database matching endpoint for a batch of peaks.
     Returns a dict mapping peak_index to match dictionary."""
     if not peaks_to_query:
@@ -169,6 +169,8 @@ Analyze the electron ionization (EI) GC-MS mass spectra of these peaks detected 
 {peaks_summary_str}
 
 Identify each compound using your public chemical standards knowledge database. 
+Note: The sample is derivatized with TMS (trimethylsilyl) reagent. If you see characteristic TMS fragments (such as m/z 73, 147, 191, etc.), suggest the appropriate TMS derivative name (e.g. "lactic acid, bis(trimethylsilyl) derivative", "glycerol-3tms", "alanine-2tms").
+
 Return ONLY a JSON array where each item corresponds to one of the queried peaks, containing these keys:
 - "peak_index": The integer index of the peak
 - "compound_name": Suggest a specific chemical name (lowercase)
@@ -179,9 +181,9 @@ Return ONLY raw JSON, do not include markdown wrapper or conversational text.
 """
 
     import requests
-    LITELLM_URL = "http://localhost:4000"
+    LITELLM_URL = "http://127.0.0.1:4000"
 
-    # 1. Try LiteLLM first (5s timeout to fail fast)
+    # 1. Try LiteLLM first (20s timeout to allow remote model response)
     try:
         print(f"[PUBLIC DB BATCH] Querying LiteLLM first for {len(peaks_to_query)} peaks...")
         r = requests.post(
@@ -193,14 +195,29 @@ Return ONLY raw JSON, do not include markdown wrapper or conversational text.
                 "max_tokens": 2000,
                 "temperature": 0.1,
             },
-            timeout=5,
+            timeout=20,
             proxies={"http": None, "https": None},
         )
         r.raise_for_status()
         content = r.json()["choices"][0]["message"]["content"].strip()
+        json_str = content
         if "```" in content:
-            content = content.split("```")[1].replace("json", "").strip()
-        res_list = json.loads(content)
+            parts = content.split("```")
+            for part in parts:
+                striped_part = part.strip()
+                if striped_part.startswith("[") or striped_part.startswith("{"):
+                    json_str = striped_part
+                    if json_str.startswith("json"):
+                        json_str = json_str[4:].strip()
+                    break
+        import re
+        json_match = re.search(r"\[\s*\{.*?\}\s*\]", json_str, re.DOTALL)
+        if json_match:
+            json_str = json_match.group(0)
+        else:
+            json_match_obj = re.search(r"\{.*?\}", json_str, re.DOTALL)
+            json_str = json_match_obj.group(0) if json_match_obj else json_str
+        res_list = json.loads(json_str)
         results_map = {}
         for item in res_list:
             p_idx = item.get("peak_index")
@@ -216,13 +233,17 @@ Return ONLY raw JSON, do not include markdown wrapper or conversational text.
 
     # 2. Direct Anthropic-style proxy fallback (the final boss)
     antigravity_base = os.environ.get("ANTIGRAVITY_BASE_URL", "http://localhost:8080")
-    antigravity_model = os.environ.get("ANTIGRAVITY_MODEL", "claude-sonnet-4-6")
+    antigravity_model = os.environ.get("ANTIGRAVITY_MODEL", "claude-opus-4-6-thinking")
     
     url = f"{antigravity_base}/messages" if "/v1" in antigravity_base else f"{antigravity_base}/v1/messages"
     
-    # We query gemini-3-flash-agent first to avoid exhausted Claude accounts on the proxy
-    models_to_try = ["gemini-3-flash-agent", antigravity_model, "gemini-3.1-pro-high"]
+    if failed_models is None:
+        failed_models = set()
+    # Prioritize fast, high-availability, non-thinking proxy models to avoid timeouts and rate-limit issues
+    models_to_try = ["gemini-2.5-flash", "gemini-2.5-pro", antigravity_model, "gemini-3-flash-agent"]
     for current_model in models_to_try:
+        if current_model in failed_models:
+            continue
         try:
             print(f"[PUBLIC DB BATCH] Querying Claude proxy with model {current_model}...")
             r = requests.post(
@@ -234,7 +255,7 @@ Return ONLY raw JSON, do not include markdown wrapper or conversational text.
                     "max_tokens": 4000,
                     "temperature": 0.1,
                 },
-                timeout=45,
+                timeout=120,
                 proxies={"http": None, "https": None},
             )
             r.raise_for_status()
@@ -255,16 +276,23 @@ Return ONLY raw JSON, do not include markdown wrapper or conversational text.
                 print(f"[PUBLIC DB BATCH] Empty response returned by proxy for model {current_model}. Trying next...")
                 continue
                 
+            json_str = content
+            if "```" in content:
+                parts = content.split("```")
+                for part in parts:
+                    striped_part = part.strip()
+                    if striped_part.startswith("[") or striped_part.startswith("{"):
+                        json_str = striped_part
+                        if json_str.startswith("json"):
+                            json_str = json_str[4:].strip()
+                        break
             import re
-            json_match = re.search(r"\[\s*\{.*\}\s*\]", content, re.DOTALL)
+            json_match = re.search(r"\[\s*\{.*?\}\s*\]", json_str, re.DOTALL)
             if json_match:
                 json_str = json_match.group(0)
             else:
-                json_match_obj = re.search(r"\{.*\}", content, re.DOTALL)
-                json_str = json_match_obj.group(0) if json_match_obj else content
-                
-            if "```" in json_str:
-                json_str = json_str.split("```")[1].replace("json", "").strip()
+                json_match_obj = re.search(r"\{.*?\}", json_str, re.DOTALL)
+                json_str = json_match_obj.group(0) if json_match_obj else json_str
                 
             try:
                 res_list = json.loads(json_str, strict=False)
@@ -292,6 +320,7 @@ Return ONLY raw JSON, do not include markdown wrapper or conversational text.
             return results_map
         except Exception as proxy_err:
             print(f"[PUBLIC DB BATCH] Proxy query failed for model {current_model}: {proxy_err}")
+            failed_models.add(current_model)
             
     print("[PUBLIC DB BATCH ERROR] Failed all LiteLLM and proxy fallbacks for this batch")
     return {}
@@ -364,6 +393,10 @@ def match_peaks(peaks_data: dict, library: list[Spectrum]) -> dict:
                 **best_match,
             })
             matched_indices.add(peak_idx)
+            peak["compound_name"] = best_match["compound_name"]
+            peak["compound_class"] = best_match["compound_class"]
+            peak["cosine_similarity"] = round(best_score, 4)
+            peak["n_fragments_matched"] = best_match["n_fragments_matched"]
 
     # Phase 2: Fallback to public database query via LLM for unmatched peaks
     unmatched_peaks_to_query = []
@@ -378,16 +411,19 @@ def match_peaks(peaks_data: dict, library: list[Spectrum]) -> dict:
         key=lambda idx: (peaks[idx].get("peak_area_mAU", 0.0), peaks[idx].get("peak_height_mAU", 0.0)),
         reverse=True
     )
+    # Limit query to top 100 peaks (encompassing almost all peaks in standard chromatograms)
+    unmatched_peaks_to_query = unmatched_peaks_to_query[:100]
 
     # Query LLM for all unmatched peaks in batches of 15 to avoid exceeding token and output limits
     chunk_size = 15
     for start_i in range(0, len(unmatched_peaks_to_query), chunk_size):
         chunk_indices = unmatched_peaks_to_query[start_i:start_i + chunk_size]
+        failed_models = set()
         peaks_to_send = [peaks[idx] for idx in chunk_indices]
         
         if peaks_to_send:
             print(f"[PUBLIC DB] Batch querying public database for peaks {start_i+1} to {start_i+len(peaks_to_send)} of {len(unmatched_peaks_to_query)} unmatched peaks...")
-            batch_matches = query_public_db_batch_via_llm(peaks_to_send, sample_id)
+            batch_matches = query_public_db_batch_via_llm(peaks_to_send, sample_id, failed_models)
             
             for idx in chunk_indices:
                 peak = peaks[idx]
@@ -406,6 +442,19 @@ def match_peaks(peaks_data: dict, library: list[Spectrum]) -> dict:
                         "n_fragments_matched": min(n_frags, 10),
                     })
                     matched_indices.add(idx)
+                    peak["compound_name"] = llm_match["compound_name"]
+                    peak["compound_class"] = llm_match["compound_class"]
+                    peak["cosine_similarity"] = round(llm_match["cosine_similarity"], 4)
+                    peak["n_fragments_matched"] = min(n_frags, 10)
+
+    # Populate matching attributes for unmatched peaks
+    for idx in range(len(peaks)):
+        if idx not in matched_indices:
+            peak = peaks[idx]
+            peak["compound_name"] = "unidentified"
+            peak["compound_class"] = "unknown"
+            peak["cosine_similarity"] = "N/A"
+            peak["n_fragments_matched"] = "N/A"
 
     unmatched = [i for i in range(len(peaks)) if i not in matched_indices]
 

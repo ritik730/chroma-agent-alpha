@@ -1,4 +1,9 @@
 @echo off
+if exist "%~dp0.env" (
+    for /f "usebackq eol=# tokens=1* delims==" %%i in ("%~dp0.env") do (
+        set %%i=%%j
+    )
+)
 title CHROMA-AGENT-ALPHA Master Service Launcher
 echo ========================================================
 echo  CHROMA-AGENT-ALPHA - Starting All Services (Hidden Mode)

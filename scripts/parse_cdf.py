@@ -72,7 +72,10 @@ def load_mzml(filepath: str) -> tuple[np.ndarray, np.ndarray, dict, list]:
                     
                     # Convert to minutes if scan start time is in seconds
                     unit_str = str(getattr(scan_time, 'unit_info', '')).lower()
-                    unit_name = scan.get('scan start time', {}).get('unitName', '').lower()
+                    unit_name = ""
+                    scan_start_time_val = scan.get('scan start time', {})
+                    if isinstance(scan_start_time_val, dict):
+                        unit_name = scan_start_time_val.get('unitName', '').lower()
                     if 'second' in unit_str or 'second' in unit_name:
                         scan_time = float(scan_time) / 60.0
                     else:
@@ -350,19 +353,27 @@ def als_baseline(y: np.ndarray, lam: float = 1e6, p: float = 0.01, n_iter: int =
 
 
 def detect_peaks(rt: np.ndarray, corrected: np.ndarray,
-                 height_pct: float = 0.10, distance_pts: int = 10,
-                 prominence_pct: float = 0.05) -> list[dict]:
+                 height_pct: float = 0.01, distance_pts: int = 10,
+                 prominence_pct: float = 0.005) -> list[dict]:
     """Find chromatographic peaks in baseline-corrected signal.
-    height_pct and prominence_pct are fractions of max corrected intensity."""
+    height_pct and prominence_pct are fractions of max corrected intensity.
+    Adaptive thresholds: caps the relative threshold to prevent massive dominant peaks from inflating it."""
     max_val = corrected.max()
     if max_val <= 0:
         return []
 
+    # Calculate relative threshold and apply a cap to protect minor peaks in high dynamic range samples
+    calc_height = max_val * height_pct
+    calc_prominence = max_val * prominence_pct
+    
+    height_threshold = min(calc_height, 10000.0)
+    prominence_threshold = min(calc_prominence, 5000.0)
+
     indices, props = find_peaks(
         corrected,
-        height=max_val * height_pct,
+        height=height_threshold,
         distance=distance_pts,
-        prominence=max_val * prominence_pct,
+        prominence=prominence_threshold,
     )
 
     peaks = []

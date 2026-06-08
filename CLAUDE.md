@@ -3,7 +3,7 @@
 # Updated: 2026-05-19 | Source: CHROMA-AGENT-ALPHA-CONTEXT.md v3.0
 
 ## IDENTITY
-User: Devendra (Ritik) Kataria | MSc Chemistry 82% | 2027 PhD Target
+User: Devendra Kataria | MSc Chemistry 82% | 2027 PhD Target
 Narrative: "I don't run the machines. I build the brains that analyze their telemetry."
 Machine: Dell Latitude 5300 | i5-8th Gen | 16GB RAM | No GPU | Windows 11
 No local LLM models. Zero local compute. All inference is cloud via OpenRouter.

@@ -3,7 +3,7 @@
 ## Current Project Phase
 - **Phase**: Ingestion & Deconvolution Robustness
 - **Status**: Stable
-- **Active Task**: Successfully integrated native Python preprocessing and ingestion support for Varian `.xms`/`.sms` files in the pipeline. Implemented binary decoding with a 12-bit mask override to prevent overflows, created a unified file format loader `load_any_file`, and updated `parse_cdf.py`, `data_store.py`, and `pipeline_server.py`. Validated the entire 4-stage pipeline autonomously, producing correctly enriched compound matches and Excel reports without external dependencies.
+- **Active Task**: Successfully copy-ingested and executed the full 4-stage pipeline on the Agilent `PE-2.D` and `PE-5.D` datasets from `AllPolymers_GCMS_RawData`. Fixed a `pyteomics` unitfloat attribute error in `parse_cdf.py` and implemented adaptive peak capping to recover minor peaks in high-dynamic-range runs. Validated results against MassHunter/NIST20 reference reports, achieving an 84-93% peak detection overlap.
 
 ---
 

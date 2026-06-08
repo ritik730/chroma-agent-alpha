@@ -54,7 +54,7 @@
             border: 1px border-subtle;
             border-top: 1px solid var(--border-glow);
             border-radius: 16px;
-            padding: 1.5rem;
+            padding: 1.25rem;
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
             transition: all 0.3s ease;
         }
@@ -66,8 +66,8 @@
 
         header {
             max-width: 1400px;
-            margin: 2rem auto 1.5rem;
-            padding: 0 2rem;
+            margin: 1.25rem auto 1rem;
+            padding: 0 1.5rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -141,17 +141,17 @@
         main {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 0 2rem;
+            padding: 0 1.5rem;
             display: grid;
-            grid-template-columns: 350px 1fr;
-            gap: 1.5rem;
+            grid-template-columns: 320px 1fr;
+            gap: 1.25rem;
         }
 
         /* Sidebar Column */
         .sidebar {
             display: flex;
             flex-direction: column;
-            gap: 1.5rem;
+            gap: 1.25rem;
         }
 
         .section-title {
@@ -285,13 +285,98 @@
         .viewport {
             display: flex;
             flex-direction: column;
-            gap: 1.5rem;
+            gap: 1.25rem;
+            min-width: 0; /* Prevent grid child layout stretch/overflow */
         }
 
         .chart-container {
             position: relative;
-            height: 380px;
+            height: 290px;
             width: 100%;
+        }
+
+        /* Small spinner */
+        .spinner-small {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-top: 2px solid var(--accent-cyan);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        /* Watcher step card */
+        .watcher-step-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+            transition: all 0.3s ease;
+        }
+        .watcher-step-card.active {
+            border-color: rgba(6, 182, 212, 0.4);
+            background: rgba(6, 182, 212, 0.05);
+            box-shadow: 0 0 10px rgba(6, 182, 212, 0.1) inset;
+        }
+        .watcher-step-card.complete {
+            border-color: rgba(16, 185, 129, 0.4);
+            background: rgba(16, 185, 129, 0.05);
+        }
+        .watcher-step-dot {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            transition: all 0.3s ease;
+        }
+        .active .watcher-step-dot {
+            background: var(--accent-cyan);
+            color: #030712;
+            box-shadow: 0 0 8px var(--accent-cyan);
+        }
+        .complete .watcher-step-dot {
+            background: var(--primary);
+            color: #030712;
+            box-shadow: 0 0 8px var(--primary);
+        }
+        .watcher-step-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+        .active .watcher-step-label {
+            color: var(--text-normal);
+        }
+        .complete .watcher-step-label {
+            color: var(--text-normal);
+        }
+        .watcher-step-status {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+        .active .watcher-step-status {
+            color: var(--accent-cyan);
+            animation: pulse-glow 1.5s infinite alternate;
+        }
+        .complete .watcher-step-status {
+            color: var(--primary);
+        }
+
+        @keyframes pulse-glow {
+            from { opacity: 0.6; }
+            to { opacity: 1; }
         }
 
         /* Pipeline Steps Timeline */
@@ -366,34 +451,85 @@
         .peaks-table-container {
             max-height: 250px;
             overflow-y: auto;
+            overflow-x: auto; /* Enable horizontal scrolling on mobile */
             border: 1px solid var(--border-subtle);
             border-radius: 8px;
         }
 
         table {
             width: 100%;
+            min-width: 800px;
             border-collapse: collapse;
-            font-size: 0.85rem;
+            font-size: 0.82rem;
             text-align: left;
         }
 
         th {
-            background: rgba(0, 0, 0, 0.4);
+            background: #111827; /* Solid background to prevent overlap */
             color: var(--text-muted);
             font-weight: 600;
             text-transform: uppercase;
-            font-size: 0.75rem;
+            font-size: 0.72rem;
             letter-spacing: 0.05em;
-            padding: 0.75rem 1rem;
+            padding: 0.5rem 0.4rem;
             border-bottom: 1px solid var(--border-subtle);
             position: sticky;
             top: 0;
+            z-index: 2; /* Keep on top of scrolling content */
+            white-space: nowrap;
         }
 
         td {
-            padding: 0.75rem 1rem;
+            padding: 0.5rem 0.4rem;
             border-bottom: 1px solid var(--border-subtle);
             color: var(--text-main);
+            white-space: nowrap;
+        }
+
+        /* Let compound names wrap to prevent layout stretching */
+        td.compound-name-cell {
+            white-space: normal !important;
+            word-break: break-word !important;
+            line-height: 1.25 !important;
+            min-width: 140px;
+            max-width: 260px;
+        }
+
+        /* Responsive row detail styles for mobile viewports */
+        .details-row {
+            display: none !important; /* Hidden on desktop */
+        }
+
+        .details-expanded-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            background: rgba(0, 0, 0, 0.25);
+            padding: 0.65rem 0.75rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            margin: 0.25rem 0;
+        }
+
+        .details-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.03);
+            padding-bottom: 0.2rem;
+            padding-right: 0.5rem;
+        }
+
+        .details-item strong {
+            color: #fff;
+            font-weight: 500;
+        }
+
+        .details-item span {
+            font-family: var(--font-mono);
+            color: var(--accent-cyan);
         }
 
         tr:hover td {
@@ -401,9 +537,9 @@
         }
 
         .class-badge {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-family: var(--font-mono);
-            padding: 0.15rem 0.4rem;
+            padding: 0.1rem 0.35rem;
             border-radius: 4px;
             font-weight: 500;
         }
@@ -414,7 +550,42 @@
         .class-aromatic { background: rgba(139, 92, 246, 0.15); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.3); }
         .class-ester { background: rgba(236, 72, 153, 0.15); color: #f472b6; border: 1px solid rgba(236, 72, 153, 0.3); }
         .class-acid { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .class-terpene { background: rgba(20, 184, 166, 0.15); color: #2dd4bf; border: 1px solid rgba(20, 184, 166, 0.3); }
+        .class-amine { background: rgba(6, 182, 212, 0.15); color: #22d3ee; border: 1px solid rgba(6, 182, 212, 0.3); }
         .class-unknown { background: rgba(255, 255, 255, 0.05); color: var(--text-muted); border: 1px solid var(--border-subtle); }
+
+        /* USP <467> Regulatory Compliance Badges */
+        .status-badge {
+            font-size: 0.7rem;
+            font-family: var(--font-mono);
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-weight: 600;
+            display: inline-block;
+            text-align: center;
+        }
+        .status-pass {
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.4);
+        }
+        .status-fail {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            animation: pulse-alert-border 2s infinite;
+        }
+        .status-na {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+            border: 1px solid var(--border-subtle);
+        }
+
+        @keyframes pulse-alert-border {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+            70% { box-shadow: 0 0 0 5px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
 
         .console {
             background: #010409;
@@ -427,6 +598,31 @@
             height: 100px;
             overflow-y: auto;
             white-space: pre-wrap;
+        }
+
+        /* Custom Scrollbar styling matching dark glassmorphism theme */
+        .peaks-table-container::-webkit-scrollbar,
+        #runs-list::-webkit-scrollbar,
+        .console::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .peaks-table-container::-webkit-scrollbar-track,
+        #runs-list::-webkit-scrollbar-track,
+        .console::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.01);
+            border-radius: 4px;
+        }
+        .peaks-table-container::-webkit-scrollbar-thumb,
+        #runs-list::-webkit-scrollbar-thumb,
+        .console::-webkit-scrollbar-thumb {
+            background: rgba(16, 185, 129, 0.2);
+            border-radius: 4px;
+        }
+        .peaks-table-container::-webkit-scrollbar-thumb:hover,
+        #runs-list::-webkit-scrollbar-thumb:hover,
+        .console::-webkit-scrollbar-thumb:hover {
+            background: var(--primary);
         }
 
         .console span.success { color: var(--primary); }
@@ -462,6 +658,166 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        .watcher-steps-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.75rem;
+            text-align: center;
+        }
+
+        /* Responsive Media Queries for Mobile/Tablet Devices */
+        @media (max-width: 1024px) {
+            main {
+                grid-template-columns: 300px 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .glass-panel {
+                padding: 1rem !important;
+            }
+
+            header {
+                flex-direction: column;
+                gap: 0.5rem !important;
+                margin: 1rem auto 0.5rem !important;
+                padding: 0 1rem;
+                text-align: center;
+            }
+
+            h1 {
+                font-size: 1.6rem !important;
+                justify-content: center;
+            }
+
+            .status-container {
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 0.4rem !important;
+            }
+
+            .badge {
+                font-size: 0.7rem !important;
+                padding: 0.25rem 0.5rem !important;
+            }
+
+            main {
+                grid-template-columns: 1fr;
+                padding: 0 0.75rem !important;
+                gap: 0.75rem !important;
+            }
+
+            .sidebar {
+                gap: 0.75rem !important;
+            }
+
+            #runs-list {
+                max-height: 140px !important;
+            }
+
+            .list-item {
+                padding: 0.5rem 0.75rem !important;
+            }
+
+            .viewport {
+                gap: 0.75rem !important;
+            }
+
+            .pipeline-timeline {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.4rem !important;
+            }
+
+            .watcher-steps-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 0.4rem !important;
+            }
+
+            .step-card {
+                padding: 0.5rem !important;
+            }
+
+            .step-title {
+                font-size: 0.75rem !important;
+            }
+
+            .watcher-step-card {
+                padding: 0.4rem !important;
+            }
+
+            .watcher-step-label {
+                font-size: 0.65rem !important;
+            }
+
+            .chart-container {
+                height: 220px !important;
+            }
+
+            table {
+                min-width: auto !important;
+                width: 100% !important;
+            }
+
+            .col-secondary {
+                display: none !important;
+            }
+
+            th, td {
+                padding: 0.4rem 0.4rem !important;
+                font-size: 0.75rem !important;
+            }
+
+            .console {
+                height: 80px !important;
+                font-size: 0.7rem !important;
+                padding: 0.5rem !important;
+            }
+
+            #btn-full-pipeline {
+                padding: 0.8rem 0.75rem !important;
+                font-size: 1rem !important;
+                margin-bottom: 0.75rem !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .glass-panel {
+                padding: 0.75rem !important;
+            }
+
+            h1 {
+                font-size: 1.4rem !important;
+            }
+
+            main {
+                padding: 0 0.5rem !important;
+                gap: 0.5rem !important;
+            }
+
+            .chart-container {
+                height: 180px !important;
+            }
+
+            .section-title {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 0.5rem !important;
+                font-size: 1.1rem !important;
+            }
+
+            #btn-export-excel {
+                width: 100% !important;
+                justify-content: center !important;
+                padding: 0.5rem 1rem !important;
+            }
+
+            .watcher-step-dot {
+                width: 16px !important;
+                height: 16px !important;
+                font-size: 0.65rem !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -470,6 +826,7 @@
         <div class="status-container">
             <div id="status-server" class="badge badge-offline"><div class="badge-dot"></div>Server: Checking</div>
             <div id="status-litellm" class="badge badge-offline"><div class="badge-dot"></div>LiteLLM: Checking</div>
+            <div id="status-watcher" class="badge badge-offline"><div class="badge-dot"></div>Auto Ingest: Checking</div>
         </div>
     </header>
 
@@ -489,17 +846,55 @@
                     <svg style="width: 18px; height: 18px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/></svg>
                     Ingest & Parse CDF
                 </button>
-                <button id="btn-full-pipeline" onclick="runFullPipeline()" disabled style="margin-bottom: 1rem; background: linear-gradient(135deg, var(--accent-purple) 0%, #6d28d9 100%); box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25); padding: 1.1rem 0.85rem; font-size: 1.1rem;">
+                <button id="btn-full-pipeline" onclick="runFullPipeline()" disabled style="margin-bottom: 0.75rem; background: linear-gradient(135deg, var(--accent-purple) 0%, #6d28d9 100%); box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25); padding: 0.85rem; font-size: 1rem;">
                     <svg style="width: 18px; height: 18px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                     ⚡ Run Full Pipeline
                 </button>
-                <div style="border-top: 1px solid var(--border-subtle); padding-top: 1rem;">
+                <div style="border-top: 1px solid var(--border-subtle); padding-top: 0.75rem;">
                     <label>Or Upload Instrument File</label>
                     <button onclick="document.getElementById('file-uploader').click()" style="background: linear-gradient(135deg, var(--accent-cyan) 0%, #0891b2 100%); box-shadow: 0 4px 12px rgba(6, 182, 212, 0.2);">
                         <svg style="width: 18px; height: 18px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
                         Upload Raw File (.cdf / .mzML)
                     </button>
                     <input type="file" id="file-uploader" accept=".cdf,.mzML" style="display: none;" onchange="handleFileUpload(event)">
+                </div>
+            </div>
+
+            <!-- Quantification & Calibration Parameters -->
+            <div class="glass-panel" id="quant-panel">
+                <div class="section-title" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;" onclick="toggleQuantPanel()">
+                    <span>Quantification & Calibration</span>
+                    <svg id="quant-arrow" style="width: 18px; height: 18px; transform: rotate(0deg); transition: transform 0.3s;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </div>
+                <div id="quant-content" style="transition: max-height 0.3s ease-out; overflow: hidden; max-height: 0px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.75rem;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-size: 0.7rem; margin-bottom: 0.25rem; text-transform: none !important;">Weight W<sub>Spl</sub> (g)</label>
+                            <input type="number" id="quant-weight" value="0.1000" step="0.0001" min="0.0001" oninput="onQuantParamChange()" style="padding: 0.4rem; font-size: 0.8rem; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--border-subtle); color: var(--text-normal); border-radius: 6px;">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-size: 0.7rem; margin-bottom: 0.25rem; text-transform: none !important;">API Conc C<sub>Sample</sub> (mg/mL)</label>
+                            <input type="number" id="quant-api-conc" value="1.0000" step="0.0001" min="0.0001" oninput="onQuantParamChange()" style="padding: 0.4rem; font-size: 0.8rem; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--border-subtle); color: var(--text-normal); border-radius: 6px;">
+                        </div>
+                    </div>
+                    
+                    <div style="border-top: 1px solid var(--border-subtle); padding-top: 0.5rem; margin-bottom: 0.5rem;">
+                        <span style="font-size: 0.75rem; font-weight: 600; color: var(--text-normal); display: block; margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em;">Standards Calibration</span>
+                        <div style="max-height: 180px; overflow-y: auto; padding-right: 0.25rem;">
+                            <table style="width: 100%; border-collapse: collapse; font-size: 0.75rem;" id="calib-table">
+                                <thead>
+                                    <tr style="border-bottom: 1px solid var(--border-subtle);">
+                                        <th style="text-align: left; padding: 0.25rem 0; width: 35%;">Solvent</th>
+                                        <th style="text-align: left; padding: 0.25rem 0; width: 30%;">C<sub>std</sub> (µg/mL)</th>
+                                        <th style="text-align: left; padding: 0.25rem 0; width: 35%;">r<sub>std</sub> (Area)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="calib-inputs-tbody">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -515,6 +910,50 @@
 
         <!-- Main Viewport -->
         <div class="viewport">
+            <!-- Active Auto Ingestion Progress Panel -->
+            <div id="watcher-progress-panel" class="glass-panel" style="display: none; padding: 1.25rem; border-color: rgba(6, 182, 212, 0.3); background: rgba(17, 24, 39, 0.85); position: relative;">
+                <button onclick="dismissWatcherPanel()" style="position: absolute; top: 0.5rem; right: 0.75rem; width: auto; background: transparent; border: none; box-shadow: none; padding: 0.25rem; cursor: pointer; color: var(--text-muted); font-size: 1.25rem; font-weight: 300;" title="Dismiss Panel">×</button>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; padding-right: 1.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <div id="watcher-spinner" class="spinner-small" style="border-top-color: var(--accent-cyan);"></div>
+                        <span style="font-family: var(--font-outfit); font-weight: 600; color: var(--text-normal); font-size: 1rem;">
+                            Auto Ingest Active File: <span id="watcher-filename" style="color: var(--accent-cyan);">sample.cdf</span>
+                        </span>
+                    </div>
+                    <span id="watcher-overall-status" style="font-size: 0.85rem; font-family: var(--font-outfit); color: var(--text-muted); font-weight: 500;">
+                        Processing...
+                    </span>
+                </div>
+                
+                <!-- Progress Bar -->
+                <div class="progress-bar-track" style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; margin-bottom: 1rem; position: relative;">
+                    <div id="watcher-progress-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #06b6d4 0%, #10b981 100%); transition: width 0.5s ease; box-shadow: 0 0 10px rgba(6, 182, 212, 0.4);"></div>
+                </div>
+                
+                <!-- 4 Steps Indicators -->
+                <div class="watcher-steps-grid">
+                    <div id="watcher-step-1" class="watcher-step-card">
+                        <div class="watcher-step-dot">1</div>
+                        <div class="watcher-step-label">Stage 01: Parse CDF</div>
+                        <div id="watcher-step-1-status" class="watcher-step-status">Pending</div>
+                    </div>
+                    <div id="watcher-step-2" class="watcher-step-card">
+                        <div class="watcher-step-dot">2</div>
+                        <div class="watcher-step-label">Stage 02: GNN Deconv</div>
+                        <div id="watcher-step-2-status" class="watcher-step-status">Pending</div>
+                    </div>
+                    <div id="watcher-step-3" class="watcher-step-card">
+                        <div class="watcher-step-dot">3</div>
+                        <div class="watcher-step-label">Stage 03: Spectral Match</div>
+                        <div id="watcher-step-3-status" class="watcher-step-status">Pending</div>
+                    </div>
+                    <div id="watcher-step-4" class="watcher-step-card">
+                        <div class="watcher-step-dot">4</div>
+                        <div class="watcher-step-label">Stage 04: AI & Excel</div>
+                        <div id="watcher-step-4-status" class="watcher-step-status">Pending</div>
+                    </div>
+                </div>
+            </div>
             <!-- Pipeline Timeline -->
             <div class="glass-panel" style="padding: 1rem;">
                 <div class="pipeline-timeline">
@@ -565,19 +1004,22 @@
                     <table id="peaks-table">
                         <thead>
                             <tr>
-                                <th>Index</th>
-                                <th>RT (min)</th>
-                                <th>Height (mAU)</th>
-                                <th>Area (mAU·min)</th>
-                                <th>GNN Purity</th>
-                                <th>Match Identification</th>
-                                <th>Match Class</th>
-                                <th>Match Score</th>
+                                <th class="col-secondary" style="width: 5%">Index</th>
+                                <th style="width: 8%">RT (min)</th>
+                                <th class="col-secondary" style="width: 10%">Height (mAU)</th>
+                                <th class="col-secondary" style="width: 10%">Area (mAU·min)</th>
+                                <th class="col-secondary" style="width: 10%">GNN Purity</th>
+                                <th style="width: 16%">Compound ID</th>
+                                <th class="col-secondary" style="width: 10%">Class</th>
+                                <th class="col-secondary" style="width: 8%">Score</th>
+                                <th style="width: 9%">ppm</th>
+                                <th style="width: 9%">Content %</th>
+                                <th style="width: 10%">Status</th>
                             </tr>
                         </thead>
                         <tbody id="peaks-table-body">
                             <tr>
-                                <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">No data loaded. Select a cdf file or processed run to begin.</td>
+                                <td colspan="11" style="text-align: center; color: var(--text-muted); padding: 2rem;">No data loaded. Select a cdf file or processed run to begin.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -629,9 +1071,145 @@
                     log("Warning: LiteLLM proxy (port 4000) is down. Fallback models will be used or T2/T3 enrichments may fail.", "error");
                 }
 
+                // Update Auto Ingest Watcher badge
+                const wBadge = document.getElementById('status-watcher');
+                if (data.watcher_active) {
+                    wBadge.className = 'badge badge-online';
+                    wBadge.innerHTML = `<div class="badge-dot"></div>Auto Ingest: Active`;
+                } else {
+                    wBadge.className = 'badge badge-degraded';
+                    wBadge.innerHTML = `<div class="badge-dot"></div>Auto Ingest: Disabled`;
+                }
+
                 // Populate File Selectors
                 populateRawFiles(data.raw_data_files);
                 populateRunsList(data.processed_files);
+
+                // Update Auto Ingestion Progress Panel
+                const progressPanel = document.getElementById('watcher-progress-panel');
+                const wStatus = data.watcher_status;
+                const dismissedFile = localStorage.getItem('watcher_dismissed_file');
+                
+                if (wStatus && (wStatus.active || wStatus.stage === 'complete' || wStatus.stage === 'failed')) {
+                    const filename = wStatus.current_file || "Unknown file";
+                    
+                    // Reset dismissed flag if it is active again
+                    if (wStatus.active && dismissedFile === filename) {
+                        localStorage.removeItem('watcher_dismissed_file');
+                    }
+                    
+                    if (dismissedFile === filename && !wStatus.active) {
+                        progressPanel.style.display = 'none';
+                    } else {
+                        progressPanel.style.display = 'block';
+                        document.getElementById('watcher-filename').textContent = filename;
+                        
+                        // Update overall status text
+                        const statusText = document.getElementById('watcher-overall-status');
+                        const spinner = document.getElementById('watcher-spinner');
+                        
+                        // Calculate progress percentage and step states
+                        let pct = 0;
+                        let step1Class = 'watcher-step-card';
+                        let step2Class = 'watcher-step-card';
+                        let step3Class = 'watcher-step-card';
+                        let step4Class = 'watcher-step-card';
+                        
+                        let step1Status = 'Pending';
+                        let step2Status = 'Pending';
+                        let step3Status = 'Pending';
+                        let step4Status = 'Pending';
+
+                        const completed = wStatus.stages_completed || [];
+                        
+                        if (completed.includes('parse')) {
+                            step1Class += ' complete';
+                            step1Status = 'Complete';
+                            pct = 25;
+                        }
+                        if (completed.includes('deconv')) {
+                            step2Class += ' complete';
+                            step2Status = 'Complete';
+                            pct = 50;
+                        }
+                        if (completed.includes('match')) {
+                            step3Class += ' complete';
+                            step3Status = 'Complete';
+                            pct = 75;
+                        }
+                        if (completed.includes('enrich')) {
+                            step4Class += ' complete';
+                            step4Status = 'Complete';
+                            pct = 100;
+                        }
+
+                        // Update current active stage
+                        if (wStatus.stage === 'parsing') {
+                            step1Class += ' active';
+                            step1Status = 'Parsing...';
+                            pct = 10;
+                            statusText.textContent = 'Parsing CDF Ingestion data...';
+                            spinner.style.display = 'block';
+                        } else if (wStatus.stage === 'deconvolving') {
+                            step2Class += ' active';
+                            step2Status = 'Deconvolving...';
+                            pct = 35;
+                            statusText.textContent = 'Deconvolving mixed signals (GNN)...';
+                            spinner.style.display = 'block';
+                        } else if (wStatus.stage === 'matching') {
+                            step3Class += ' active';
+                            step3Status = 'Matching...';
+                            pct = 60;
+                            statusText.textContent = 'Spectral library matching...';
+                            spinner.style.display = 'block';
+                        } else if (wStatus.stage === 'enriching') {
+                            step4Class += ' active';
+                            step4Status = 'Enriching...';
+                            pct = 85;
+                            statusText.textContent = 'AI Enrichment & Compound Classification...';
+                            spinner.style.display = 'block';
+                        } else if (wStatus.stage === 'generating_excel') {
+                            step4Class += ' active';
+                            step4Status = 'Writing Excel...';
+                            pct = 95;
+                            statusText.textContent = 'Writing final results Excel report...';
+                            spinner.style.display = 'block';
+                        } else if (wStatus.stage === 'complete') {
+                            step4Class += ' complete';
+                            step4Status = 'Complete';
+                            pct = 100;
+                            statusText.innerHTML = '<span style="color: var(--primary)">✓ Autonomous run complete! Excel report saved.</span>';
+                            spinner.style.display = 'none';
+                        } else if (wStatus.stage === 'failed') {
+                            statusText.innerHTML = `<span style="color: #ef4444">⚠ Error: ${wStatus.last_error || "Pipeline failed"}</span>`;
+                            spinner.style.display = 'none';
+                        } else if (wStatus.stage === 'starting') {
+                            pct = 5;
+                            statusText.textContent = 'Initializing pipeline...';
+                            spinner.style.display = 'block';
+                        }
+
+                        document.getElementById('watcher-progress-bar').style.width = pct + '%';
+                        
+                        const s1 = document.getElementById('watcher-step-1');
+                        s1.className = step1Class;
+                        document.getElementById('watcher-step-1-status').textContent = step1Status;
+                        
+                        const s2 = document.getElementById('watcher-step-2');
+                        s2.className = step2Class;
+                        document.getElementById('watcher-step-2-status').textContent = step2Status;
+                        
+                        const s3 = document.getElementById('watcher-step-3');
+                        s3.className = step3Class;
+                        document.getElementById('watcher-step-3-status').textContent = step3Status;
+                        
+                        const s4 = document.getElementById('watcher-step-4');
+                        s4.className = step4Class;
+                        document.getElementById('watcher-step-4-status').textContent = step4Status;
+                    }
+                } else {
+                    progressPanel.style.display = 'none';
+                }
             } catch (err) {
                 const sBadge = document.getElementById('status-server');
                 sBadge.className = 'badge badge-offline';
@@ -640,6 +1218,11 @@
                 const lBadge = document.getElementById('status-litellm');
                 lBadge.className = 'badge badge-offline';
                 lBadge.innerHTML = `<div class="badge-dot"></div>LiteLLM: Offline`;
+
+                const wBadge = document.getElementById('status-watcher');
+                wBadge.className = 'badge badge-offline';
+                wBadge.innerHTML = `<div class="badge-dot"></div>Auto Ingest: Offline`;
+
                 log("Failed to connect to pipeline server on " + serverUrl, "error");
             }
         }
@@ -768,6 +1351,7 @@
                 if (response.ok) {
                     log(`CDF Ingestion successfully completed! Found ${res.peak_count} peaks.`, 'success');
                     activeSampleId = res.sample_id;
+                    localStorage.setItem('activeSampleId', activeSampleId);
                     await loadRun(activeSampleId);
                     await runHealthCheck(); // refresh runs list
                 } else {
@@ -882,6 +1466,7 @@
                     log(`Full pipeline complete! Stages: [${stages}]. ` +
                         `${res.peak_count} peaks detected, ${res.match_count} matched.`, 'success');
                     activeSampleId = res.sample_id;
+                    localStorage.setItem('activeSampleId', activeSampleId);
                     await loadRun(activeSampleId);
                     await runHealthCheck();
                 } else {
@@ -904,7 +1489,17 @@
             log(`Generating Excel report for ${activeSampleId}...`, 'info');
 
             try {
-                const response = await fetch(`${serverUrl}/export/${activeSampleId}`);
+                const wSpl = parseFloat(document.getElementById('quant-weight').value) || 0.1000;
+                const cSample = parseFloat(document.getElementById('quant-api-conc').value) || 1.0000;
+                const calibrations = getCalibrations();
+
+                const params = new URLSearchParams({
+                    weight: wSpl,
+                    api_conc: cSample,
+                    calibrations: JSON.stringify(calibrations)
+                });
+
+                const response = await fetch(`${serverUrl}/export/${activeSampleId}?${params.toString()}`);
                 if (!response.ok) {
                     const err = await response.json();
                     log(`Export failed: ${err.detail}`, 'error');
@@ -930,6 +1525,7 @@
         // Fetch and load details of a specific sample run
         async function loadRun(sampleId) {
             activeSampleId = sampleId;
+            localStorage.setItem('activeSampleId', sampleId);
             
             // Highlight selected run in list
             const items = document.querySelectorAll('.list-item');
@@ -958,11 +1554,19 @@
                 // Fetch results (this fetches enriched, matched or raw automatically depending on what exists)
                 let data = null;
                 
-                // Fetch matched first if exists
+                // Fetch enriched first if exists
                 try {
-                    const r = await fetch(`${serverUrl}/results/${sampleId}_matched`);
+                    const r = await fetch(`${serverUrl}/results/${sampleId}_enriched`);
                     if (r.ok) data = await r.json();
                 } catch(e) {}
+
+                if (!data) {
+                    // Try matched
+                    try {
+                        const r = await fetch(`${serverUrl}/results/${sampleId}_matched`);
+                        if (r.ok) data = await r.json();
+                    } catch(e) {}
+                }
 
                 if (!data) {
                     // Try deconvolved
@@ -1028,13 +1632,151 @@
             }
         }
 
+        const USP_467_LIMITS = {
+            "benzene": 2.0,
+            "carbon tetrachloride": 4.0,
+            "1,2-dichloroethane": 5.0,
+            "1,1-dichloroethene": 8.0,
+            "1,1,1-trichloroethane": 10.0,
+            "methanol": 3000.0,
+            "acetonitrile": 410.0,
+            "dichloromethane": 600.0,
+            "hexane": 290.0,
+            "toluene": 890.0,
+            "ethanol": 5000.0,
+            "acetone": 5000.0,
+            "ethyl acetate": 5000.0,
+            "tetrahydrofuran": 720.0,
+            "isopropanol": 5000.0,
+            "propanol": 5000.0,
+            "1-propanol": 5000.0,
+            "2-propanol": 5000.0,
+            "butanol": 5000.0,
+            "1-butanol": 5000.0,
+            "2-butanol": 5000.0,
+            "isobutanol": 5000.0
+        };
+
+        const defaultCalibrations = [
+            { solvent: 'Methanol', cStd: 3000, rStd: 15000000 },
+            { solvent: 'Ethanol', cStd: 5000, rStd: 25000000 },
+            { solvent: 'Acetone', cStd: 5000, rStd: 20000000 },
+            { solvent: 'Toluene', cStd: 890, rStd: 8900000 }
+        ];
+
+        function initCalibrationInputs() {
+            const tbody = document.getElementById('calib-inputs-tbody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            
+            defaultCalibrations.forEach(cal => {
+                const tr = document.createElement('tr');
+                tr.dataset.solvent = cal.solvent;
+                tr.style.borderBottom = '1px solid rgba(255,255,255,0.03)';
+                tr.innerHTML = `
+                    <td style="padding: 0.35rem 0; font-weight: 500; color: var(--text-normal);">${cal.solvent}</td>
+                    <td style="padding: 0.35rem 0;">
+                        <input type="number" id="cstd-${cal.solvent}" value="${cal.cStd}" oninput="onQuantParamChange()" style="width: 85%; padding: 0.2rem; font-size: 0.75rem; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--border-subtle); color: var(--text-normal); border-radius: 4px;">
+                    </td>
+                    <td style="padding: 0.35rem 0;">
+                        <input type="number" id="rstd-${cal.solvent}" value="${cal.rStd}" oninput="onQuantParamChange()" style="width: 90%; padding: 0.2rem; font-size: 0.75rem; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--border-subtle); color: var(--text-normal); border-radius: 4px;">
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function toggleQuantPanel() {
+            const content = document.getElementById('quant-content');
+            const arrow = document.getElementById('quant-arrow');
+            if (content.style.maxHeight === '0px' || content.style.maxHeight === '') {
+                content.style.maxHeight = '500px';
+                arrow.style.transform = 'rotate(180deg)';
+            } else {
+                content.style.maxHeight = '0px';
+                arrow.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        function getCalibrations() {
+            const calibrations = {};
+            const rows = document.querySelectorAll('#calib-inputs-tbody tr');
+            rows.forEach(row => {
+                const solvent = row.dataset.solvent;
+                const cStd = parseFloat(document.getElementById(`cstd-${solvent}`).value) || 0;
+                const rStd = parseFloat(document.getElementById(`rstd-${solvent}`).value) || 0;
+                if (cStd > 0 && rStd > 0) {
+                    calibrations[solvent] = { CStd: cStd, rStd: rStd };
+                }
+            });
+            return calibrations;
+        }
+
+        function onQuantParamChange() {
+            if (currentRunData && currentRunData.peaks) {
+                renderPeaksTable(currentRunData.peaks, currentRunData.matches);
+            }
+        }
+
+        function calculateQuantification(peak, compoundName) {
+            const nameLower = (compoundName || "").toLowerCase().trim();
+            const calibrations = getCalibrations();
+            
+            let matchedKey = null;
+            for (const key of Object.keys(calibrations)) {
+                if (nameLower.includes(key.toLowerCase())) {
+                    matchedKey = key;
+                    break;
+                }
+            }
+            
+            // Look up USP limit
+            let limit = null;
+            for (const k of Object.keys(USP_467_LIMITS)) {
+                if (nameLower.includes(k)) {
+                    limit = USP_467_LIMITS[k];
+                    break;
+                }
+            }
+            
+            if (matchedKey) {
+                const wSpl = parseFloat(document.getElementById('quant-weight').value) || 0.1;
+                const cSample = parseFloat(document.getElementById('quant-api-conc').value) || 1.0;
+                const rSpl = peak.peak_area_mAU;
+                
+                const cal = calibrations[matchedKey];
+                const cStd = cal.CStd;
+                const rStd = cal.rStd;
+                
+                const rf = rStd / cStd;
+                let ppm = 0;
+                let contentPct = 0;
+                
+                if (rf > 0 && wSpl > 0) {
+                    ppm = rSpl / (rf * wSpl);
+                }
+                if (cSample > 0 && rStd > 0) {
+                    contentPct = (rSpl * cStd * 0.1) / (cSample * rStd);
+                }
+                
+                let status = "PASS";
+                if (limit !== null && ppm > limit) {
+                    status = "FAIL";
+                }
+                
+                return { ppm, contentPct, status, limit, calibrated: true };
+            }
+            
+            return { ppm: null, contentPct: null, status: null, limit: limit, calibrated: false };
+        }
+
         // Render Peaks table with matching classes and formatting
         function renderPeaksTable(peaks, matches) {
             const tbody = document.getElementById('peaks-table-body');
             tbody.innerHTML = '';
 
             if (!peaks || peaks.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">No peaks detected in this run.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 2rem;">No peaks detected in this run.</td></tr>';
                 return;
             }
 
@@ -1045,7 +1787,6 @@
                     matchMap[m.peak_index] = m;
                 });
             } else {
-                // If the file is already a combined matched file, peaks themselves might contain match info
                 peaks.forEach(p => {
                     if (p.compound_name) {
                         matchMap[p.peak_index] = p;
@@ -1062,25 +1803,141 @@
                 const height = p.peak_height_mAU.toFixed(1);
                 const area = p.peak_area_mAU.toFixed(1);
                 
-                const purity = p.component_purity !== undefined ? p.component_purity.toFixed(2) : '<span style="color: #6b7280; font-style: italic; font-size: 0.75rem;">Not Run</span>';
+                // GNN Purity
+                let purity = '<span style="color: #6b7280; font-style: italic; font-size: 0.75rem;">Not Run</span>';
+                if (p.component_purity !== undefined) {
+                    purity = p.component_purity.toFixed(2);
+                } else if (p.coeluting === false) {
+                    purity = '1.00';
+                }
+
+                // Compound Name and Class Fallback
+                let idName = '<span style="color: #6b7280; font-style: italic; font-size: 0.75rem;">Not Run</span>';
+                let idClass = 'unknown';
+                let idScore = '<span style="color: #6b7280; font-style: italic; font-size: 0.75rem;">Not Run</span>';
+
+                // Resolve from peak object or mapped match
+                let isMatchRun = false;
+                let currentCosine = undefined;
+                let currentConfidence = undefined;
+
+                if (p.compound_name !== undefined) {
+                    isMatchRun = true;
+                    idName = p.compound_name || 'unidentified';
+                    idClass = p.compound_class || 'unknown';
+                    currentCosine = p.cosine_similarity;
+                    currentConfidence = p.confidence || p.enrich_confidence;
+                } else if (match) {
+                    isMatchRun = true;
+                    idName = match.compound_name || 'unidentified';
+                    idClass = match.compound_class || 'unknown';
+                    currentCosine = match.cosine_similarity;
+                }
+
+                if (isMatchRun) {
+                    // Match Score / AI Confidence Formatting
+                    if (currentCosine !== undefined && currentCosine !== null && currentCosine !== 'N/A') {
+                        const scoreNum = parseFloat(currentCosine);
+                        idScore = !isNaN(scoreNum) ? scoreNum.toFixed(3) : currentCosine;
+                    } else if (currentConfidence) {
+                        idScore = `AI: ${currentConfidence}`;
+                    } else if (idName !== 'unidentified') {
+                        idScore = 'AI: low';
+                    } else {
+                        idScore = 'N/A';
+                    }
+                }
+
+                // Perform quantification calculations
+                const quant = calculateQuantification(p, idName);
+                const ppmDisplay = quant.calibrated ? quant.ppm.toFixed(2) : "N/A";
+                const pctDisplay = quant.calibrated ? quant.contentPct.toFixed(4) : "N/A";
                 
-                const idName = match ? match.compound_name : '<span style="color: #6b7280; font-style: italic; font-size: 0.75rem;">Not Run</span>';
-                const idClass = match ? match.compound_class : 'unknown';
-                const idScore = match ? (match.cosine_similarity !== undefined ? match.cosine_similarity.toFixed(3) : '1.000') : '<span style="color: #6b7280; font-style: italic; font-size: 0.75rem;">Not Run</span>';
+                let statusBadge = `<span class="status-badge status-na">N/A</span>`;
+                if (quant.calibrated) {
+                    if (quant.status === "FAIL") {
+                        statusBadge = `<span class="status-badge status-fail">FAIL</span>`;
+                    } else {
+                        statusBadge = `<span class="status-badge status-pass">PASS</span>`;
+                    }
+                }
+
+                // Color-code row backgrounds dynamically
+                const isSpectral = p.cosine_similarity !== undefined && p.cosine_similarity !== 'N/A';
+                const isAI = isMatchRun && !isSpectral && idName !== 'unidentified';
+                const isUnidentified = isMatchRun && idName === 'unidentified';
+
+                if (quant.calibrated && quant.status === "FAIL") {
+                    tr.style.background = 'rgba(239, 68, 68, 0.12)'; // Pulsing red alert tint
+                    tr.style.borderLeft = '3px solid #ef4444';
+                } else if (isSpectral) {
+                    tr.style.background = 'rgba(16, 185, 129, 0.04)'; // Light green tint
+                    tr.style.borderLeft = '3px solid var(--accent-emerald)';
+                } else if (isAI) {
+                    tr.style.background = 'rgba(59, 130, 246, 0.04)'; // Light blue tint
+                    tr.style.borderLeft = '3px solid var(--primary)';
+                } else if (isUnidentified) {
+                    tr.style.background = 'rgba(239, 68, 68, 0.04)'; // Light pink/red tint
+                    tr.style.borderLeft = '3px solid #ef4444';
+                }
 
                 const badgeClass = `class-badge class-${idClass}`;
 
                 tr.innerHTML = `
-                    <td style="font-family: var(--font-mono)">${idx}</td>
-                    <td>${rt}</td>
-                    <td>${height}</td>
-                    <td>${area}</td>
-                    <td style="font-family: var(--font-mono)">${purity}</td>
-                    <td style="font-weight: 500">${idName}</td>
-                    <td><span class="${badgeClass}">${idClass}</span></td>
-                    <td style="font-family: var(--font-mono)">${idScore}</td>
+                    <td class="col-secondary" style="font-family: var(--font-mono)">${idx}</td>
+                    <td style="font-family: var(--font-mono)">${rt}</td>
+                    <td class="col-secondary">${height}</td>
+                    <td class="col-secondary">${area}</td>
+                    <td class="col-secondary" style="font-family: var(--font-mono)">${purity}</td>
+                    <td class="compound-name-cell" style="font-weight: 500">${idName}</td>
+                    <td class="col-secondary"><span class="${badgeClass}">${idClass}</span></td>
+                    <td class="col-secondary" style="font-family: var(--font-mono)">${idScore}</td>
+                    <td style="font-family: var(--font-mono)">${ppmDisplay}</td>
+                    <td style="font-family: var(--font-mono)">${pctDisplay}</td>
+                    <td>${statusBadge}</td>
                 `;
+
+                // Add details row toggle for mobile layout
+                tr.style.cursor = 'pointer';
+                tr.onclick = function() {
+                    // Only expand/collapse on mobile widths where columns are hidden
+                    if (window.innerWidth <= 768) {
+                        const nextRow = tr.nextSibling;
+                        if (nextRow && nextRow.classList.contains('details-row')) {
+                            const isHidden = nextRow.style.display === 'none' || nextRow.style.getPropertyValue('display') === 'none';
+                            if (isHidden) {
+                                nextRow.style.setProperty('display', 'table-row', 'important');
+                                tr.classList.add('expanded');
+                            } else {
+                                nextRow.style.setProperty('display', 'none', 'important');
+                                tr.classList.remove('expanded');
+                            }
+                        }
+                    }
+                };
+
+                const detailsTr = document.createElement('tr');
+                detailsTr.className = 'details-row';
+                detailsTr.style.display = 'none';
+                detailsTr.innerHTML = `
+                    <td colspan="11" style="padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border-subtle); background: rgba(0, 0, 0, 0.15);">
+                        <div class="details-expanded-grid">
+                            <div class="details-item"><strong>Index:</strong> <span>${idx}</span></div>
+                            <div class="details-item"><strong>Peak Height:</strong> <span>${height} mAU</span></div>
+                            <div class="details-item"><strong>Peak Area:</strong> <span>${area} mAU·min</span></div>
+                            <div class="details-item"><strong>GNN Purity:</strong> <span>${purity}</span></div>
+                            <div class="details-item"><strong>Class:</strong> <span>${idClass}</span></div>
+                            <div class="details-item"><strong>Match Score:</strong> <span>${idScore}</span></div>
+                            <div class="details-item"><strong>Quantified ppm:</strong> <span>${ppmDisplay}</span></div>
+                            <div class="details-item"><strong>Content %:</strong> <span>${pctDisplay}</span></div>
+                            <div class="details-item"><strong>USP <467> Limit:</strong> <span>${quant.limit !== null ? quant.limit + " ppm" : "N/A"}</span></div>
+                            <div class="details-item"><strong>Compliance Status:</strong> <span>${quant.calibrated ? quant.status : "N/A"}</span></div>
+                        </div>
+                    </td>
+                `;
+
                 tbody.appendChild(tr);
+                tbody.appendChild(detailsTr);
             });
         }
 
@@ -1151,21 +2008,21 @@
                             label: 'Chromatogram Trace (mAU)',
                             data: intensityAxis,
                             borderColor: '#10b981',
-                            borderWidth: 2,
+                            borderWidth: 1.5,
                             fill: true,
                             backgroundColor: 'rgba(16, 185, 129, 0.03)',
                             pointRadius: 0,
-                            tension: 0.2
+                            tension: 0.15
                         },
                         {
                             label: 'Peak Apexes',
                             data: apexPoints,
                             type: 'scatter',
                             backgroundColor: '#06b6d4',
-                            borderColor: '#ffffff',
-                            borderWidth: 1.5,
-                            pointRadius: 6,
-                            pointHoverRadius: 8,
+                            borderColor: 'rgba(255, 255, 255, 0.4)',
+                            borderWidth: 1,
+                            pointRadius: 3,
+                            pointHoverRadius: 5,
                             showLine: false
                         }
                     ]
@@ -1182,7 +2039,7 @@
                                 color: '#9ca3af',
                                 font: { family: 'Outfit', size: 12, weight: '500' }
                             },
-                            grid: { color: 'rgba(255, 255, 255, 0.04)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.02)' },
                             ticks: { color: '#9ca3af', callback: v => v.toFixed(1) }
                         },
                         y: {
@@ -1192,8 +2049,15 @@
                                 color: '#9ca3af',
                                 font: { family: 'Outfit', size: 12, weight: '500' }
                             },
-                            grid: { color: 'rgba(255, 255, 255, 0.04)' },
-                            ticks: { color: '#9ca3af' }
+                            grid: { color: 'rgba(255, 255, 255, 0.02)' },
+                            ticks: { 
+                                color: '#9ca3af',
+                                callback: function(value) {
+                                    if (value >= 1e6) return (value / 1e6).toFixed(0) + 'M';
+                                    if (value >= 1e3) return (value / 1e3).toFixed(0) + 'K';
+                                    return value;
+                                }
+                            }
                         }
                     },
                     plugins: {
@@ -1213,11 +2077,31 @@
             });
         }
 
+        function dismissWatcherPanel() {
+            const currentFile = document.getElementById('watcher-filename').textContent;
+            if (currentFile) {
+                localStorage.setItem('watcher_dismissed_file', currentFile);
+            }
+            document.getElementById('watcher-progress-panel').style.display = 'none';
+            log("Progress panel dismissed.", "info");
+        }
+
         // Run setup on window load
         window.onload = () => {
+            initCalibrationInputs();
+            
+            // Expand quantification panel by default
+            document.getElementById('quant-content').style.maxHeight = '500px';
+            document.getElementById('quant-arrow').style.transform = 'rotate(180deg)';
+
             runHealthCheck();
-            // Poll health state every 10 seconds
-            setInterval(runHealthCheck, 10000);
+            // Poll health state every 4 seconds for snappy real-time updates
+            setInterval(runHealthCheck, 4000);
+            
+            const lastSample = localStorage.getItem('activeSampleId');
+            if (lastSample) {
+                loadRun(lastSample);
+            }
         };
     </script>
 </body>

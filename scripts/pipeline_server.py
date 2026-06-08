@@ -131,7 +131,8 @@ def check_and_convert_proprietary_file(filename: str) -> str:
             common_patterns = [
                 r"C:\Program Files\ProteoWizard*\msconvert.exe",
                 r"C:\Program Files (x86)\ProteoWizard*\msconvert.exe",
-                r"C:\Users\*\AppData\Local\ProteoWizard*\msconvert.exe"
+                r"C:\Users\*\AppData\Local\ProteoWizard*\msconvert.exe",
+                r"C:\Users\*\AppData\Local\Apps\ProteoWizard*\msconvert.exe"
             ]
             for pattern in common_patterns:
                 matches = glob.glob(pattern)

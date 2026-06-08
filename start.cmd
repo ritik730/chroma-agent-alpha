@@ -1,4 +1,9 @@
 @echo off
+if exist "%~dp0.env" (
+    for /f "usebackq eol=# tokens=1* delims==" %%i in ("%~dp0.env") do (
+        set %%i=%%j
+    )
+)
 title CHROMA-AGENT-ALPHA v5
 echo ========================================
 echo  CHROMA-AGENT-ALPHA // TRI-STACK v5

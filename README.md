@@ -39,9 +39,9 @@ A dual-agent AI system that autonomously processes `.cdf`, `.mzML`, and `.D` fil
 | ALS Baseline Correction | ✅ Done |
 | Peak Detection (scipy) | ✅ Done |
 | n8n Folder Trigger | ✅ Done |
-| Spectral Matching (matchms) | ⚠️ Partial |
-| GNN Deconvolution | ❌ Pending |
-| FAIR Storage (zarr) | ❌ Pending |
+| Spectral Matching (matchms) | ✅ Done |
+| GNN Deconvolution | ✅ Done |
+| FAIR Storage (zarr + lamindb) | ✅ Done |
 
 ## Quick Start
 
@@ -90,4 +90,4 @@ chroma-agent-alpha/
 
 ---
 
-*Built by Devendra (Ritik) Kataria — MSc Chemistry, 82%*
+*Built by Devendra Kataria — MSc Chemistry, 82%*
