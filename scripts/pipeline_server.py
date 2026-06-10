@@ -206,6 +206,10 @@ class DeconvRequest(BaseModel):
 class MatchRequest(BaseModel):
     sample_id: str
 
+class AlignRequest(BaseModel):
+    sample_ids: list[str]
+    reference_sample_id: str = None
+
 
 # ── Instrument File Upload Endpoint ──────────────────────────────────
 
@@ -782,6 +786,420 @@ def get_results(sample_id: str, username: str = Depends(authenticate_user)):
     return data
 
 
+def load_processed_data(sample_id: str) -> dict:
+    """Helper to load the most advanced peak data and retention times for a sample."""
+    base_id = sample_id
+    for suffix in ["_enriched", "_matched", "_deconvolved"]:
+        if base_id.endswith(suffix):
+            base_id = base_id[:-len(suffix)]
+            break
+
+    parsed_file = PROC_DIR / f"{base_id}.json"
+    deconv_file = PROC_DIR / f"{base_id}_deconvolved.json"
+    matched_file = PROC_DIR / f"{base_id}_matched.json"
+    enriched_file = PROC_DIR / f"{base_id}_enriched.json"
+
+    data = {}
+    if parsed_file.exists():
+        try:
+            data = json.loads(parsed_file.read_text())
+        except Exception:
+            pass
+            
+    if not data:
+        for f in [deconv_file, matched_file, enriched_file]:
+            if f.exists():
+                try:
+                    data = json.loads(f.read_text())
+                    break
+                except Exception:
+                    pass
+
+    if not data:
+        raise HTTPException(status_code=404, detail=f"No results found for sample: {sample_id}")
+
+    # Layer peaks info sequentially (parsed < deconvolved < matched < enriched)
+    if deconv_file.exists():
+        try:
+            deconv_data = json.loads(deconv_file.read_text())
+            if "peaks" in deconv_data:
+                data["peaks"] = deconv_data["peaks"]
+        except Exception:
+            pass
+
+    if matched_file.exists():
+        try:
+            matched_data = json.loads(matched_file.read_text())
+            if "peaks" in matched_data:
+                data["peaks"] = matched_data["peaks"]
+        except Exception:
+            pass
+
+    if enriched_file.exists():
+        try:
+            enriched_data = json.loads(enriched_file.read_text())
+            if "peaks" in enriched_data:
+                # Merge enriched peaks data
+                enriched_peaks_map = {p.get("peak_index"): p for p in enriched_data["peaks"]}
+                for p in data.get("peaks", []):
+                    p_idx = p.get("peak_index")
+                    if p_idx in enriched_peaks_map:
+                        p["compound_class"] = enriched_peaks_map[p_idx].get("compound_class")
+                        p["confidence"] = enriched_peaks_map[p_idx].get("confidence")
+                        if enriched_peaks_map[p_idx].get("compound_name"):
+                            p["compound_name"] = enriched_peaks_map[p_idx]["compound_name"]
+        except Exception:
+            pass
+
+    return data
+
+
+def _perform_alignment(req: AlignRequest) -> dict:
+    """Helper function to perform alignment calculations for clean reuse."""
+    import numpy as np
+    import sys
+    
+    # Make sure SCRIPTS_DIR is in path
+    if str(SCRIPTS_DIR) not in sys.path:
+        sys.path.append(str(SCRIPTS_DIR))
+    import alignment
+
+    if not req.sample_ids or len(req.sample_ids) < 2:
+        raise HTTPException(status_code=400, detail="At least two sample IDs must be provided for alignment.")
+
+    # Sanitize and load all sample data
+    samples_data = {}
+    for sid in req.sample_ids:
+        safe_sid = sanitize_sample_id(sid)
+        try:
+            samples_data[sid] = load_processed_data(safe_sid)
+        except HTTPException as e:
+            raise e
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to load data for sample {sid}: {e}")
+
+    # Determine reference sample ID
+    ref_sid = req.reference_sample_id
+    if ref_sid:
+        if ref_sid not in samples_data:
+            safe_ref_sid = sanitize_sample_id(ref_sid)
+            if safe_ref_sid in samples_data:
+                ref_sid = safe_ref_sid
+            else:
+                raise HTTPException(status_code=400, detail=f"Reference sample ID '{ref_sid}' not found in sample_ids.")
+    else:
+        # Choose run with the largest total peak area
+        max_area = -1.0
+        best_sid = None
+        for sid, sdata in samples_data.items():
+            peaks = sdata.get("peaks", [])
+            total_area = sum(float(p.get("peak_area_mAU", 0.0)) for p in peaks)
+            if total_area > max_area:
+                max_area = total_area
+                best_sid = sid
+        ref_sid = best_sid
+
+    ref_data = samples_data[ref_sid]
+    rt_ref_orig = np.array(ref_data["retention_time"], dtype=np.float64)
+    peaks_ref = ref_data.get("peaks", [])
+
+    # Downsample reference grid to 1000 points for CPU-friendly O(N) alignment
+    rt_ref = np.linspace(rt_ref_orig.min(), rt_ref_orig.max(), 1000)
+
+    # Reconstruct reference chromatogram signal
+    try:
+        int_ref = alignment.reconstruct_chromatogram_from_peaks(rt_ref, peaks_ref)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to reconstruct chromatogram for reference {ref_sid}: {e}")
+
+    aligned_runs = {}
+
+    for sid, sdata in samples_data.items():
+        if sid == ref_sid:
+            aligned_runs[sid] = {
+                "aligned_intensity": [float(val) for val in int_ref],
+                "peaks": peaks_ref,
+                "warping_path": [[i, i] for i in range(len(rt_ref))]
+            }
+            continue
+
+        rt_target_orig = np.array(sdata["retention_time"], dtype=np.float64)
+        peaks_target = sdata.get("peaks", [])
+
+        # Downsample target grid to 1000 points
+        rt_target = np.linspace(rt_target_orig.min(), rt_target_orig.max(), 1000)
+
+        # Reconstruct target chromatogram signal
+        try:
+            int_target = alignment.reconstruct_chromatogram_from_peaks(rt_target, peaks_target)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to reconstruct chromatogram for target {sid}: {e}")
+
+        # Align signals
+        try:
+            aligned_int, path = alignment.align_chromatogram_signals(
+                rt_ref, int_ref, rt_target, int_target, window_seconds=15.0
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Signal alignment failed for {sid}: {e}")
+
+        # Map peaks
+        try:
+            _, updated_target = alignment.map_and_align_peaks(
+                peaks_ref, peaks_target, rt_ref, rt_target, path, rt_tolerance_min=0.05
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Peak alignment failed for {sid}: {e}")
+
+        aligned_runs[sid] = {
+            "aligned_intensity": [float(val) for val in aligned_int],
+            "peaks": updated_target,
+            "warping_path": [[int(i), int(j)] for i, j in path]
+        }
+
+    return {
+        "status": "ok",
+        "reference_sample_id": ref_sid,
+        "reference_rt": [float(t) for t in rt_ref],
+        "reference_intensity": [float(val) for val in int_ref],
+        "aligned_runs": aligned_runs
+    }
+
+
+@app.post("/run/align")
+def run_align(req: AlignRequest, username: str = Depends(authenticate_user)):
+    """Perform multi-sample chromatographic alignment and retention time drift correction."""
+    return _perform_alignment(req)
+
+
+@app.post("/export/comparison")
+def export_comparison(req: AlignRequest, username: str = Depends(authenticate_user)):
+    """
+    Generate and download a side-by-side comparative Excel report
+    for multiple aligned runs.
+    """
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    align_res = _perform_alignment(req)
+    ref_sid = align_res["reference_sample_id"]
+    aligned_runs = align_res["aligned_runs"]
+    
+    ref_peaks = aligned_runs[ref_sid]["peaks"]
+    rows = []
+    
+    ref_peak_map = {}
+    for rp in ref_peaks:
+        row = {
+            "compound_name": rp.get("compound_name") or "unidentified",
+            "compound_class": rp.get("compound_class") or "unknown",
+            "ref_rt": rp.get("retention_time"),
+            "ref_peak_index": rp.get("peak_index"),
+            "peaks_by_sample": {ref_sid: rp}
+        }
+        rows.append(row)
+        ref_peak_map[rp["peak_index"]] = row
+
+    unmatched_target_rows = []
+    for sid, run_data in aligned_runs.items():
+        if sid == ref_sid:
+            continue
+        
+        target_peaks = run_data["peaks"]
+        for tp in target_peaks:
+            ref_idx = tp.get("matched_peak_index")
+            if ref_idx is not None and ref_idx in ref_peak_map:
+                ref_peak_map[ref_idx]["peaks_by_sample"][sid] = tp
+            else:
+                unmatched_row = {
+                    "compound_name": tp.get("compound_name") or "unidentified",
+                    "compound_class": tp.get("compound_class") or "unknown",
+                    "ref_rt": tp.get("aligned_rt"),
+                    "ref_peak_index": None,
+                    "peaks_by_sample": {sid: tp}
+                }
+                unmatched_target_rows.append(unmatched_row)
+
+    unmatched_target_rows.sort(key=lambda x: x["ref_rt"] if x["ref_rt"] is not None else 9999.0)
+    all_rows = rows + unmatched_target_rows
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Sample Comparison"
+
+    header_font = Font(name="Calibri", bold=True, size=11, color="FFFFFF")
+    header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
+    subheader_fill = PatternFill(start_color="2F5597", end_color="2F5597", fill_type="solid")
+    header_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    
+    thin_border = Border(
+        left=Side(style="thin", color="D9D9D9"),
+        right=Side(style="thin", color="D9D9D9"),
+        top=Side(style="thin", color="D9D9D9"),
+        bottom=Side(style="thin", color="D9D9D9"),
+    )
+    
+    data_font = Font(name="Calibri", size=10)
+    bold_data_font = Font(name="Calibri", bold=True, size=10)
+    data_align = Alignment(horizontal="center", vertical="center")
+    left_align = Alignment(horizontal="left", vertical="center")
+    
+    ref_run_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
+    
+    sample_ids = req.sample_ids
+    ordered_samples = [ref_sid] + [sid for sid in sample_ids if sid != ref_sid]
+    num_samples = len(ordered_samples)
+    total_cols = 4 + (num_samples * 3)
+
+    title_range = f"A1:{get_column_letter(total_cols)}1"
+    ws.merge_cells(title_range)
+    title_cell = ws["A1"]
+    title_cell.value = "CHROMA-AGENT-ALPHA — Multi-Sample Chromatographic Alignment & Comparison"
+    title_cell.font = Font(name="Calibri", bold=True, size=14, color="1F4E79")
+    title_cell.alignment = Alignment(horizontal="center", vertical="center")
+    ws.row_dimensions[1].height = 30
+
+    meta_range = f"A2:{get_column_letter(total_cols)}2"
+    ws.merge_cells(meta_range)
+    meta_cell = ws["A2"]
+    meta_cell.value = f"Generated: {time.strftime('%Y-%m-%d %H:%M:%S')} | Alignment Window: ±15s | Reference: {ref_sid} | Total Runs: {num_samples}"
+    meta_cell.font = Font(name="Calibri", size=9, italic=True, color="808080")
+    meta_cell.alignment = Alignment(horizontal="center", vertical="center")
+    ws.row_dimensions[2].height = 20
+
+    ws.row_dimensions[4].height = 24
+    ws.merge_cells("A4:D4")
+    c_hdr = ws.cell(row=4, column=1, value="Peak Identification & Timeline")
+    c_hdr.font = header_font
+    c_hdr.fill = header_fill
+    c_hdr.alignment = header_align
+    c_hdr.border = thin_border
+    
+    for col in range(2, 5):
+        ws.cell(row=4, column=col).border = thin_border
+        ws.cell(row=4, column=col).fill = header_fill
+
+    current_col = 5
+    for sid in ordered_samples:
+        col_letter_start = get_column_letter(current_col)
+        col_letter_end = get_column_letter(current_col + 2)
+        merge_range = f"{col_letter_start}4:{col_letter_end}4"
+        ws.merge_cells(merge_range)
+        
+        lbl = f"Run: {sid}"
+        if sid == ref_sid:
+            lbl += " [REF]"
+            
+        s_hdr = ws.cell(row=4, column=current_col, value=lbl)
+        s_hdr.font = header_font
+        s_hdr.fill = subheader_fill if sid != ref_sid else header_fill
+        s_hdr.alignment = header_align
+        s_hdr.border = thin_border
+        
+        for col in range(current_col + 1, current_col + 3):
+            c = ws.cell(row=4, column=col)
+            c.border = thin_border
+            c.fill = subheader_fill if sid != ref_sid else header_fill
+            
+        current_col += 3
+
+    ws.row_dimensions[5].height = 20
+    sub_headers = ["Compound Name", "Class", "Ref Peak Index", "Ref RT (min)"]
+    for sid in ordered_samples:
+        sub_headers.extend(["Area (mAU·min)", "Height (mAU)", "RT (min)"])
+        
+    for col_idx, sh in enumerate(sub_headers, 1):
+        cell = ws.cell(row=5, column=col_idx, value=sh)
+        cell.font = header_font
+        is_ref_metric = (5 <= col_idx <= 7) or (col_idx <= 4)
+        cell.fill = header_fill if is_ref_metric else subheader_fill
+        cell.alignment = header_align
+        cell.border = thin_border
+
+    current_row = 6
+    for row_data in all_rows:
+        ws.row_dimensions[current_row].height = 18
+        
+        c_name = ws.cell(row=current_row, column=1, value=row_data["compound_name"])
+        c_name.font = bold_data_font if row_data["ref_peak_index"] is not None else data_font
+        c_name.alignment = left_align
+        c_name.border = thin_border
+        
+        c_class = ws.cell(row=current_row, column=2, value=row_data["compound_class"])
+        c_class.font = data_font
+        c_class.alignment = left_align
+        c_class.border = thin_border
+        
+        ref_pi_val = row_data["ref_peak_index"]
+        c_rpi = ws.cell(row=current_row, column=3, value=ref_pi_val if ref_pi_val is not None else "N/A")
+        c_rpi.font = data_font
+        c_rpi.alignment = data_align
+        c_rpi.border = thin_border
+        
+        ref_rt_val = row_data["ref_rt"]
+        c_rrt = ws.cell(row=current_row, column=4, value=round(ref_rt_val, 4) if ref_rt_val is not None else "N/A")
+        c_rrt.font = data_font
+        c_rrt.alignment = data_align
+        c_rrt.border = thin_border
+        
+        col_offset = 5
+        for sid in ordered_samples:
+            peak = row_data["peaks_by_sample"].get(sid)
+            is_ref = (sid == ref_sid)
+            
+            if peak is not None:
+                area_cell = ws.cell(row=current_row, column=col_offset, value=float(peak.get("peak_area_mAU", 0.0)))
+                area_cell.number_format = "0.00"
+                
+                height_cell = ws.cell(row=current_row, column=col_offset + 1, value=float(peak.get("peak_height_mAU", 0.0)))
+                height_cell.number_format = "0.0"
+                
+                rt_val = peak.get("retention_time")
+                rt_cell = ws.cell(row=current_row, column=col_offset + 2, value=float(rt_val))
+                rt_cell.number_format = "0.000"
+            else:
+                area_cell = ws.cell(row=current_row, column=col_offset, value=0.0)
+                area_cell.number_format = "0.00"
+                
+                height_cell = ws.cell(row=current_row, column=col_offset + 1, value=0.0)
+                height_cell.number_format = "0.0"
+                
+                rt_cell = ws.cell(row=current_row, column=col_offset + 2, value="-")
+            
+            for cell in [area_cell, height_cell, rt_cell]:
+                cell.font = data_font
+                cell.alignment = data_align
+                cell.border = thin_border
+                if is_ref:
+                    cell.fill = ref_run_fill
+                    
+            col_offset += 3
+            
+        current_row += 1
+
+    for col in ws.columns:
+        max_len = 0
+        col_letter = get_column_letter(col[0].column)
+        for cell in col:
+            if cell.row > 3 and cell.value:
+                max_len = max(max_len, len(str(cell.value)))
+        ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
+        
+    ws.column_dimensions["A"].width = 24
+    ws.column_dimensions["B"].width = 16
+
+    output_path = RESULTS_DIR / "comparison_results.xlsx"
+    wb.save(output_path)
+    
+    return FileResponse(
+        path=str(output_path),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        filename="comparison_results.xlsx"
+    )
+
+
+
 def create_excel_report(
     sample_id: str,
     sample_weight: float = 0.1000,
@@ -871,15 +1289,15 @@ def create_excel_report(
     fail_font = Font(name="Calibri", bold=True, color="C00000", size=10) # bold dark red text
     pass_font = Font(name="Calibri", bold=True, color="375623", size=10) # bold dark green text
 
-    # Title row (merged O columns wide now)
-    ws.merge_cells("A1:O1")
+    # Title row (merged T columns wide now)
+    ws.merge_cells("A1:T1")
     title_cell = ws["A1"]
     title_cell.value = f"CHROMA-AGENT-ALPHA — Peak Quantification & Regulatory Compliance Report: {base_id}"
     title_cell.font = Font(name="Calibri", bold=True, size=14, color="1F4E79")
     title_cell.alignment = Alignment(horizontal="center", vertical="center")
 
     # Metadata row
-    ws.merge_cells("A2:P2")
+    ws.merge_cells("A2:T2")
     meta_cell = ws["A2"]
     meta_cell.value = f"Generated: {time.strftime('%Y-%m-%d %H:%M:%S')} | Sample Weight: {sample_weight:.4f} g | API Conc: {api_conc:.4f} mg/mL | Total Peaks: {len(peaks)}"
     meta_cell.font = Font(name="Calibri", size=9, italic=True, color="808080")
@@ -888,7 +1306,7 @@ def create_excel_report(
     # Headers
     headers = [
         "Peak Index", "RT (min)", "Height (mAU)", "Area (mAU·min)", "GNN Purity", 
-        "Corrected Area (mAU·min)",
+        "Corrected Area (mAU·min)", "Resolution", "Tailing Factor", "Theoretical Plates", "Signal to Noise (S/N)",
         "Compound ID", "Compound Class", "Match Score", "Fragments Matched",
         "Std Area (rStd)", "Response Factor", "USP Limit (ppm)", "Quantified ppm", "Solvent Content (%)", "Compliance"
     ]
@@ -1013,6 +1431,10 @@ def create_excel_report(
             round(p.get("peak_area_mAU", 0), 2),
             purity_display,
             round(p.get("peak_area_mAU", 0.0) * purity_val, 2), # Corrected Area
+            round(p.get("resolution", 0.0), 2),
+            round(p.get("tailing_factor", 1.0), 3),
+            int(p.get("theoretical_plates", 0)),
+            round(p.get("signal_to_noise", 0.0), 1),
             comp_name,
             comp_class,
             score,
@@ -1033,14 +1455,14 @@ def create_excel_report(
             cell.fill = row_fill
             
             # Format compliance text font specially
-            if col_idx == 16: # Compliance column
+            if col_idx == 20: # Compliance column
                 if val == "FAIL":
                     cell.font = fail_font
                 elif val == "PASS":
                     cell.font = pass_font
 
     # Column widths
-    col_widths = [12, 12, 14, 16, 12, 35, 18, 18, 18, 20, 16, 16, 16, 18, 15]
+    col_widths = [12, 12, 14, 16, 12, 24, 12, 14, 18, 20, 35, 18, 18, 18, 20, 16, 16, 16, 18, 15]
     for i, w in enumerate(col_widths, 1):
         ws.column_dimensions[get_column_letter(i)].width = w
 

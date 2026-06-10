@@ -1,9 +1,10 @@
 # GSD Persistent State Map — CHROMA-AGENT-ALPHA
 
 ## Current Project Phase
-- **Phase**: Ingestion & Deconvolution Robustness
-- **Status**: Stable
-- **Active Task**: Successfully copy-ingested and executed the full 4-stage pipeline on the Agilent `PE-2.D` and `PE-5.D` datasets from `AllPolymers_GCMS_RawData`. Fixed a `pyteomics` unitfloat attribute error in `parse_cdf.py` and implemented adaptive peak capping to recover minor peaks in high-dynamic-range runs. Validated results against MassHunter/NIST20 reference reports, achieving an 84-93% peak detection overlap.
+- **Phase**: Manuscript Submission & PhD Candidacy Outreach
+- **Status**: Active Drafting
+- **Active Task**: Completed both Track A (Software upgrades) and Track B (Academic Placement updates) successfully. Implemented and verified Adaptive GNN Proximity Thresholding in `gnn_deconv.py` to dynamically optimize graph connectivity bounds based on peak widths, component densities, and spectral cosine similarities. Validated the adaptive thresholding mathematical models and edge constraints via unit tests in `test_software_track.py`. Updated the SLAS Technology Manuscript Draft, Project Architecture Report, repository README, and Project Progress Specs with the new capabilities (SST metrics, GNN-EMG hybrid curve fitting, Agilent binary ingestion, adaptive thresholding, and Sakoe-Chiba DTW alignment). Compiled all markdown files into styled Microsoft Word `.docx` documents using `md_to_docx.py` in the virtual environment. Verified all portfolio outputs are fully synchronized and up-to-date.
+
 
 ---
 

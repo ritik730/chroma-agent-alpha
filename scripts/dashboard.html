@@ -899,11 +899,22 @@
             </div>
 
             <!-- Run History -->
-            <div class="glass-panel" style="flex: 1;">
+            <div class="glass-panel" style="flex: 1; display: flex; flex-direction: column;">
                 <div class="section-title">Processed Runs</div>
-                <div id="runs-list" style="max-height: 380px; overflow-y: auto;">
+                <div id="runs-list" style="max-height: 280px; overflow-y: auto; flex: 1;">
                     <!-- Dynamically populated -->
                     <div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 2rem 0;">No active runs loaded</div>
+                </div>
+                <!-- Overlay & Alignment Action Panel -->
+                <div id="alignment-action-panel" style="border-top: 1px solid var(--border-subtle); padding-top: 0.75rem; margin-top: 0.5rem; display: none;">
+                    <button id="btn-align-runs" onclick="alignSelectedRuns()" style="background: linear-gradient(135deg, var(--accent-cyan) 0%, #0891b2 100%); box-shadow: 0 4px 12px rgba(6, 182, 212, 0.2); margin-bottom: 0.5rem;">
+                        <svg style="width: 18px; height: 18px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                        Align & Overlay Signals
+                    </button>
+                    <button id="btn-export-comparison-excel" onclick="exportComparisonExcel()" class="btn-secondary" style="border-color: rgba(6, 182, 212, 0.4); color: #06b6d4;">
+                        <svg style="width: 18px; height: 18px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        Export Comparison Excel
+                    </button>
                 </div>
             </div>
         </div>
@@ -1005,21 +1016,25 @@
                         <thead>
                             <tr>
                                 <th class="col-secondary" style="width: 5%">Index</th>
-                                <th style="width: 8%">RT (min)</th>
-                                <th class="col-secondary" style="width: 10%">Height (mAU)</th>
-                                <th class="col-secondary" style="width: 10%">Area (mAU·min)</th>
-                                <th class="col-secondary" style="width: 10%">GNN Purity</th>
-                                <th style="width: 16%">Compound ID</th>
-                                <th class="col-secondary" style="width: 10%">Class</th>
-                                <th class="col-secondary" style="width: 8%">Score</th>
-                                <th style="width: 9%">ppm</th>
-                                <th style="width: 9%">Content %</th>
-                                <th style="width: 10%">Status</th>
+                                <th style="width: 7%">RT (min)</th>
+                                <th class="col-secondary" style="width: 8%">Height (mAU)</th>
+                                <th class="col-secondary" style="width: 9%">Area (mAU·min)</th>
+                                <th class="col-secondary" style="width: 8%">GNN Purity</th>
+                                <th class="col-secondary" style="width: 7%">Resolution</th>
+                                <th class="col-secondary" style="width: 7%">Tailing</th>
+                                <th class="col-secondary" style="width: 8%">Plates</th>
+                                <th class="col-secondary" style="width: 7%">S/N</th>
+                                <th style="width: 14%">Compound ID</th>
+                                <th class="col-secondary" style="width: 8%">Class</th>
+                                <th class="col-secondary" style="width: 7%">Score</th>
+                                <th style="width: 8%">ppm</th>
+                                <th style="width: 8%">Content %</th>
+                                <th style="width: 8%">Status</th>
                             </tr>
                         </thead>
                         <tbody id="peaks-table-body">
                             <tr>
-                                <td colspan="11" style="text-align: center; color: var(--text-muted); padding: 2rem;">No data loaded. Select a cdf file or processed run to begin.</td>
+                                <td colspan="15" style="text-align: center; color: var(--text-muted); padding: 2rem;">No data loaded. Select a cdf file or processed run to begin.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -1251,6 +1266,13 @@
 
         function populateRunsList(files) {
             const runList = document.getElementById('runs-list');
+            
+            // Save currently checked states
+            const checkedSamples = new Set();
+            document.querySelectorAll('.run-checkbox:checked').forEach(cb => {
+                checkedSamples.add(cb.dataset.sample);
+            });
+
             runList.innerHTML = '';
             
             // Deduplicate runs into base sample IDs
@@ -1269,17 +1291,24 @@
                 const item = document.createElement('div');
                 item.className = 'list-item';
                 if (sampleId === activeSampleId) item.className += ' active';
-                item.onclick = () => loadRun(sampleId);
+
+                const isChecked = checkedSamples.has(sampleId) ? 'checked' : '';
 
                 item.innerHTML = `
-                    <div>
-                        <div class="list-item-title">${sampleId}</div>
-                        <div class="list-item-sub">Ready to inspect</div>
+                    <div style="display: flex; align-items: center; gap: 0.75rem; width: 100%;">
+                        <input type="checkbox" class="run-checkbox" data-sample="${sampleId}" ${isChecked} onclick="event.stopPropagation(); onRunCheckboxChange();" style="width: 16px; height: 16px; margin: 0; cursor: pointer; accent-color: var(--primary);">
+                        <div onclick="loadRun('${sampleId}')" style="flex: 1; min-width: 0;">
+                            <div class="list-item-title">${sampleId}</div>
+                            <div class="list-item-sub">Ready to inspect</div>
+                        </div>
                     </div>
-                    <svg style="width: 16px; height: 16px; color: var(--primary)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    <svg style="width: 16px; height: 16px; color: var(--primary); flex-shrink: 0;" fill="none" stroke="currentColor" viewBox="0 0 24 24" onclick="loadRun('${sampleId}')"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                 `;
                 runList.appendChild(item);
             });
+
+            // Re-sync UI panel states
+            onRunCheckboxChange();
         }
 
         function onRawFileChange() {
@@ -1526,6 +1555,15 @@
         async function loadRun(sampleId) {
             activeSampleId = sampleId;
             localStorage.setItem('activeSampleId', sampleId);
+
+            // Uncheck all alignment checkboxes in single-run mode
+            const checkboxes = document.querySelectorAll('.run-checkbox');
+            checkboxes.forEach(cb => cb.checked = false);
+            onRunCheckboxChange();
+
+            // Restore single run table header columns
+            restoreOriginalTableHeader();
+
             
             // Highlight selected run in list
             const items = document.querySelectorAll('.list-item');
@@ -1776,7 +1814,7 @@
             tbody.innerHTML = '';
 
             if (!peaks || peaks.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 2rem;">No peaks detected in this run.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="15" style="text-align: center; color: var(--text-muted); padding: 2rem;">No peaks detected in this run.</td></tr>';
                 return;
             }
 
@@ -1810,6 +1848,12 @@
                 } else if (p.coeluting === false) {
                     purity = '1.00';
                 }
+
+                // Extract suitability metrics (Resolution, Tailing, Plates, S/N)
+                const resolution = p.resolution !== undefined && p.resolution !== null ? p.resolution.toFixed(2) : '0.00';
+                const tailing = p.tailing_factor !== undefined && p.tailing_factor !== null ? p.tailing_factor.toFixed(3) : '1.000';
+                const plates = p.theoretical_plates !== undefined && p.theoretical_plates !== null ? p.theoretical_plates : '0';
+                const sn = p.signal_to_noise !== undefined && p.signal_to_noise !== null ? p.signal_to_noise.toFixed(1) : 'N/A';
 
                 // Compound Name and Class Fallback
                 let idName = '<span style="color: #6b7280; font-style: italic; font-size: 0.75rem;">Not Run</span>';
@@ -1889,6 +1933,10 @@
                     <td class="col-secondary">${height}</td>
                     <td class="col-secondary">${area}</td>
                     <td class="col-secondary" style="font-family: var(--font-mono)">${purity}</td>
+                    <td class="col-secondary" style="font-family: var(--font-mono)">${resolution}</td>
+                    <td class="col-secondary" style="font-family: var(--font-mono)">${tailing}</td>
+                    <td class="col-secondary" style="font-family: var(--font-mono)">${plates}</td>
+                    <td class="col-secondary" style="font-family: var(--font-mono)">${sn}</td>
                     <td class="compound-name-cell" style="font-weight: 500">${idName}</td>
                     <td class="col-secondary"><span class="${badgeClass}">${idClass}</span></td>
                     <td class="col-secondary" style="font-family: var(--font-mono)">${idScore}</td>
@@ -1920,12 +1968,16 @@
                 detailsTr.className = 'details-row';
                 detailsTr.style.display = 'none';
                 detailsTr.innerHTML = `
-                    <td colspan="11" style="padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border-subtle); background: rgba(0, 0, 0, 0.15);">
+                    <td colspan="15" style="padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border-subtle); background: rgba(0, 0, 0, 0.15);">
                         <div class="details-expanded-grid">
                             <div class="details-item"><strong>Index:</strong> <span>${idx}</span></div>
                             <div class="details-item"><strong>Peak Height:</strong> <span>${height} mAU</span></div>
                             <div class="details-item"><strong>Peak Area:</strong> <span>${area} mAU·min</span></div>
                             <div class="details-item"><strong>GNN Purity:</strong> <span>${purity}</span></div>
+                            <div class="details-item"><strong>Resolution:</strong> <span>${resolution}</span></div>
+                            <div class="details-item"><strong>Tailing Factor:</strong> <span>${tailing}</span></div>
+                            <div class="details-item"><strong>Theoretical Plates:</strong> <span>${plates}</span></div>
+                            <div class="details-item"><strong>Signal-to-Noise:</strong> <span>${sn}</span></div>
                             <div class="details-item"><strong>Class:</strong> <span>${idClass}</span></div>
                             <div class="details-item"><strong>Match Score:</strong> <span>${idScore}</span></div>
                             <div class="details-item"><strong>Quantified ppm:</strong> <span>${ppmDisplay}</span></div>
@@ -2084,6 +2136,388 @@
             }
             document.getElementById('watcher-progress-panel').style.display = 'none';
             log("Progress panel dismissed.", "info");
+        }
+
+
+        // --- Multi-Sample Alignment & Comparison Features ---
+
+        function onRunCheckboxChange() {
+            const checkboxes = document.querySelectorAll('.run-checkbox:checked');
+            const actionPanel = document.getElementById('alignment-action-panel');
+            if (checkboxes.length >= 2) {
+                actionPanel.style.display = 'block';
+            } else {
+                actionPanel.style.display = 'none';
+            }
+        }
+
+        async function alignSelectedRuns() {
+            const checkboxes = document.querySelectorAll('.run-checkbox:checked');
+            const sampleIds = Array.from(checkboxes).map(cb => cb.dataset.sample);
+            if (sampleIds.length < 2) return;
+
+            showLoader(true, 'Running multi-sample alignment (Sakoe-Chiba DTW)...');
+            log(`Aligning runs: ${sampleIds.join(', ')}...`, 'info');
+
+            try {
+                const response = await fetch(`${serverUrl}/run/align`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sample_ids: sampleIds })
+                });
+                const res = await response.json();
+                
+                if (response.ok) {
+                    log(`Alignment complete! Reference selected: ${res.reference_sample_id}`, 'success');
+                    renderAlignedData(res);
+                } else {
+                    log(`Alignment failed: ${res.detail?.message || res.detail}`, 'error');
+                }
+            } catch (err) {
+                log(`Failed to run alignment: ${err.message}`, 'error');
+            } finally {
+                showLoader(false);
+            }
+        }
+
+        async function exportComparisonExcel() {
+            const checkboxes = document.querySelectorAll('.run-checkbox:checked');
+            const sampleIds = Array.from(checkboxes).map(cb => cb.dataset.sample);
+            if (sampleIds.length < 2) return;
+
+            log(`Generating comparison Excel report for: ${sampleIds.join(', ')}...`, 'info');
+
+            try {
+                const response = await fetch(`${serverUrl}/export/comparison`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sample_ids: sampleIds })
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    log(`Comparison export failed: ${err.detail}`, 'error');
+                    return;
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `chroma_runs_comparison.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+
+                log(`Comparison Excel report downloaded successfully!`, 'success');
+            } catch (err) {
+                log(`Failed exporting comparison Excel: ${err.message}`, 'error');
+            }
+        }
+
+        function restoreOriginalTableHeader() {
+            const table = document.getElementById('peaks-table');
+            const thead = table.querySelector('thead');
+            thead.innerHTML = `
+                <tr>
+                    <th class="col-secondary" style="width: 5%">Index</th>
+                    <th style="width: 7%">RT (min)</th>
+                    <th class="col-secondary" style="width: 8%">Height (mAU)</th>
+                    <th class="col-secondary" style="width: 9%">Area (mAU·min)</th>
+                    <th class="col-secondary" style="width: 8%">GNN Purity</th>
+                    <th class="col-secondary" style="width: 7%">Resolution</th>
+                    <th class="col-secondary" style="width: 7%">Tailing</th>
+                    <th class="col-secondary" style="width: 8%">Plates</th>
+                    <th class="col-secondary" style="width: 7%">S/N</th>
+                    <th style="width: 14%">Compound ID</th>
+                    <th class="col-secondary" style="width: 8%">Class</th>
+                    <th class="col-secondary" style="width: 7%">Score</th>
+                    <th style="width: 8%">ppm</th>
+                    <th style="width: 8%">Content %</th>
+                    <th style="width: 8%">Status</th>
+                </tr>
+            `;
+        }
+
+        function renderAlignedData(alignData) {
+            // Disable single-run export since we are in aligned comparison mode
+            document.getElementById('btn-export-excel').disabled = true;
+            document.getElementById('viewport-title').textContent = `Chromatogram Profile: Multi-Run Alignment Overlay (Ref: ${alignData.reference_sample_id})`;
+
+            renderAlignedChart(alignData);
+            renderComparisonTable(alignData);
+        }
+
+        function renderAlignedChart(alignData) {
+            const ctx = document.getElementById('chromatogramChart').getContext('2d');
+            const rtAxis = alignData.reference_rt;
+            const refSid = alignData.reference_sample_id;
+            const alignedRuns = alignData.aligned_runs;
+            
+            const colors = [
+                '#10b981', // Emerald
+                '#06b6d4', // Cyan
+                '#8b5cf6', // Violet
+                '#f59e0b', // Amber
+                '#ef4444', // Red
+                '#ec4899', // Pink
+                '#3b82f6'  // Blue
+            ];
+
+            const datasets = [];
+            let colorIdx = 0;
+            
+            for (const [sid, runData] of Object.entries(alignedRuns)) {
+                const color = colors[colorIdx % colors.length];
+                colorIdx++;
+                
+                // Line dataset for signal trace
+                datasets.push({
+                    label: `${sid} (Aligned)`,
+                    data: runData.aligned_intensity,
+                    borderColor: color,
+                    borderWidth: sid === refSid ? 2.5 : 1.5,
+                    fill: sid === refSid,
+                    backgroundColor: sid === refSid ? 'rgba(16, 185, 129, 0.02)' : 'transparent',
+                    pointRadius: 0,
+                    tension: 0.15
+                });
+                
+                // Apex scatter dataset for peaks
+                const peaks = runData.peaks || [];
+                const apexPoints = [];
+                peaks.forEach(p => {
+                    const rt = p.aligned_rt !== undefined ? p.aligned_rt : p.retention_time;
+                    const height = p.peak_height_mAU;
+                    apexPoints.push({
+                        x: rt,
+                        y: height,
+                        label: `${sid} - Peak ${p.peak_index} (RT=${p.retention_time.toFixed(2)}min, Height=${height.toFixed(0)}mAU)`
+                    });
+                });
+                
+                datasets.push({
+                    label: `${sid} Apexes`,
+                    data: apexPoints,
+                    type: 'scatter',
+                    backgroundColor: color,
+                    borderColor: 'rgba(255, 255, 255, 0.4)',
+                    borderWidth: 1,
+                    pointRadius: 3.5,
+                    pointHoverRadius: 5,
+                    showLine: false
+                });
+            }
+
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: rtAxis,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            title: {
+                                display: true,
+                                text: 'Retention Time (min) [Aligned]',
+                                color: '#9ca3af',
+                                font: { family: 'Outfit', size: 12, weight: '500' }
+                            },
+                            grid: { color: 'rgba(255, 255, 255, 0.02)' },
+                            ticks: { color: '#9ca3af', callback: v => v.toFixed(1) }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Detector Signal (mAU)',
+                                color: '#9ca3af',
+                                font: { family: 'Outfit', size: 12, weight: '500' }
+                            },
+                            grid: { color: 'rgba(255, 255, 255, 0.02)' },
+                            ticks: { 
+                                color: '#9ca3af',
+                                callback: function(value) {
+                                    if (value >= 1e6) return (value / 1e6).toFixed(0) + 'M';
+                                    if (value >= 1e3) return (value / 1e3).toFixed(0) + 'K';
+                                    return value;
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                color: '#9ca3af',
+                                font: { family: 'Inter', size: 10 },
+                                filter: function(item, chart) {
+                                    return !item.text.includes('Apexes');
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    if (context.dataset.type === 'scatter') {
+                                        return context.raw.label;
+                                    }
+                                    return `${context.dataset.label}: RT=${context.parsed.x.toFixed(2)} min | Signal=${context.parsed.y.toFixed(1)} mAU`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderComparisonTable(alignData) {
+            const table = document.getElementById('peaks-table');
+            const thead = table.querySelector('thead');
+            const tbody = document.getElementById('peaks-table-body');
+            
+            thead.innerHTML = '';
+            tbody.innerHTML = '';
+            
+            const refSid = alignData.reference_sample_id;
+            const alignedRuns = alignData.aligned_runs;
+            
+            const samples = Object.keys(alignedRuns);
+            const orderedSamples = [refSid].concat(samples.filter(s => s !== refSid));
+            
+            // Build Headers Level 1
+            const tr1 = document.createElement('tr');
+            
+            const th_p = document.createElement('th');
+            th_p.colSpan = 3;
+            th_p.style.textAlign = 'center';
+            th_p.textContent = "Peak Identification & Timeline";
+            tr1.appendChild(th_p);
+            
+            orderedSamples.forEach(sid => {
+                const th_s = document.createElement('th');
+                th_s.colSpan = 3;
+                th_s.style.textAlign = 'center';
+                th_s.textContent = sid === refSid ? `Run: ${sid} [REF]` : `Run: ${sid}`;
+                tr1.appendChild(th_s);
+            });
+            thead.appendChild(tr1);
+            
+            // Build Headers Level 2
+            const tr2 = document.createElement('tr');
+            
+            const th_name = document.createElement('th'); th_name.textContent = "Compound Name"; tr2.appendChild(th_name);
+            const th_class = document.createElement('th'); th_class.textContent = "Class"; tr2.appendChild(th_class);
+            const th_rt = document.createElement('th'); th_rt.textContent = "Ref RT (min)"; tr2.appendChild(th_rt);
+            
+            orderedSamples.forEach(sid => {
+                const th_a = document.createElement('th'); th_a.textContent = "Area"; tr2.appendChild(th_a);
+                const th_h = document.createElement('th'); th_h.textContent = "Height"; tr2.appendChild(th_h);
+                const th_rt_s = document.createElement('th'); th_rt_s.textContent = "RT (min)"; tr2.appendChild(th_rt_s);
+            });
+            thead.appendChild(tr2);
+            
+            // Build Peak Rows matching logic
+            const refPeaks = alignedRuns[refSid].peaks;
+            const rows = [];
+            const refPeakMap = {};
+            
+            refPeaks.forEach(rp => {
+                const row = {
+                    compound_name: rp.compound_name || "unidentified",
+                    compound_class: rp.compound_class || "unknown",
+                    ref_rt: rp.retention_time,
+                    ref_peak_index: rp.peak_index,
+                    peaks_by_sample: { [refSid]: rp }
+                };
+                rows.push(row);
+                refPeakMap[rp.peak_index] = row;
+            });
+            
+            const unmatchedTargetRows = [];
+            orderedSamples.forEach(sid => {
+                if (sid === refSid) return;
+                const targetPeaks = alignedRuns[sid].peaks;
+                targetPeaks.forEach(tp => {
+                    const refIdx = tp.matched_peak_index;
+                    if (refIdx !== undefined && refIdx !== null && refPeakMap[refIdx]) {
+                        refPeakMap[refIdx].peaks_by_sample[sid] = tp;
+                    } else {
+                        unmatchedTargetRows.push({
+                            compound_name: tp.compound_name || "unidentified",
+                            compound_class: tp.compound_class || "unknown",
+                            ref_rt: tp.aligned_rt,
+                            ref_peak_index: null,
+                            peaks_by_sample: { [sid]: tp }
+                        });
+                    }
+                });
+            });
+            
+            unmatchedTargetRows.sort((a, b) => (a.ref_rt || 9999) - (b.ref_rt || 9999));
+            const allRows = rows.concat(unmatchedTargetRows);
+            
+            allRows.forEach(row_data => {
+                const tr = document.createElement('tr');
+                
+                const td_name = document.createElement('td');
+                td_name.className = "compound-name-cell";
+                td_name.style.fontWeight = row_data.ref_peak_index !== null ? "600" : "400";
+                td_name.textContent = row_data.compound_name;
+                tr.appendChild(td_name);
+                
+                const td_class = document.createElement('td');
+                const badgeClass = `class-badge class-${row_data.compound_class}`;
+                td_class.innerHTML = `<span class="${badgeClass}">${row_data.compound_class}</span>`;
+                tr.appendChild(td_class);
+                
+                const td_rt = document.createElement('td');
+                td_rt.style.fontFamily = "var(--font-mono)";
+                td_rt.textContent = row_data.ref_rt !== undefined && row_data.ref_rt !== null ? row_data.ref_rt.toFixed(2) : "N/A";
+                tr.appendChild(td_rt);
+                
+                orderedSamples.forEach(sid => {
+                    const peak = row_data.peaks_by_sample[sid];
+                    
+                    const td_a = document.createElement('td');
+                    const td_h = document.createElement('td');
+                    const td_rt_s = document.createElement('td');
+                    
+                    [td_a, td_h, td_rt_s].forEach(td => {
+                        td.style.fontFamily = "var(--font-mono)";
+                        if (sid === refSid) {
+                            td.style.background = "rgba(255,255,255,0.015)";
+                        }
+                    });
+                    
+                    if (peak) {
+                        td_a.textContent = peak.peak_area_mAU.toFixed(1);
+                        td_h.textContent = peak.peak_height_mAU.toFixed(0);
+                        td_rt_s.textContent = peak.retention_time.toFixed(2);
+                    } else {
+                        td_a.textContent = "0.0";
+                        td_h.textContent = "0";
+                        td_rt_s.textContent = "-";
+                        td_a.style.color = "var(--text-muted)";
+                        td_h.style.color = "var(--text-muted)";
+                        td_rt_s.style.color = "var(--text-muted)";
+                    }
+                    
+                    tr.appendChild(td_a);
+                    tr.appendChild(td_h);
+                    tr.appendChild(td_rt_s);
+                });
+                
+                tbody.appendChild(tr);
+            });
         }
 
         // Run setup on window load

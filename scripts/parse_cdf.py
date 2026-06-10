@@ -321,19 +321,110 @@ def load_xms(filepath: str) -> tuple[np.ndarray, np.ndarray, dict, list]:
     return rt, intensity, meta, spectra_data
 
 
+def load_agilent_ch(filepath: str) -> tuple[np.ndarray, np.ndarray, dict]:
+    """
+    Parse a proprietary Agilent ChemStation/OpenLab .ch chromatography binary file.
+    Reads delta-compressed 16-bit and 32-bit values and scales them to abundance units.
+    """
+    with open(filepath, "rb") as f:
+        file_bytes = f.read()
+
+    if len(file_bytes) < 4:
+        raise ValueError("Empty or invalid Agilent .ch file.")
+
+    # Determine endianness and version
+    version = struct.unpack(">H", file_bytes[0:2])[0]
+    is_little = False
+    if version > 1000:
+        version = struct.unpack("<H", file_bytes[0:2])[0]
+        is_little = True
+
+    endian = "<" if is_little else ">"
+
+    try:
+        start_time = struct.unpack(f"{endian}f", file_bytes[282:286])[0]
+        end_time = struct.unpack(f"{endian}f", file_bytes[286:290])[0]
+    except Exception:
+        start_time = 0.0
+        end_time = 60.0
+
+    try:
+        scale = struct.unpack(f"{endian}d", file_bytes[580:588])[0]
+    except Exception:
+        scale = 1.333e-4
+
+    data_offset = 6144
+    if len(file_bytes) < data_offset:
+        data_offset = 1024
+
+    idx = data_offset
+    y_values = []
+
+    # Read first absolute value (32-bit integer)
+    if idx + 4 <= len(file_bytes):
+        curr_val = struct.unpack(f"{endian}i", file_bytes[idx : idx+4])[0]
+        y_values.append(curr_val)
+        idx += 4
+    else:
+        curr_val = 0
+
+    while idx < len(file_bytes):
+        if idx + 2 > len(file_bytes):
+            break
+        delta16 = struct.unpack(f"{endian}h", file_bytes[idx : idx+2])[0]
+        idx += 2
+
+        if delta16 == -32768:  # 0x8000 escape code for 32-bit delta
+            if idx + 4 > len(file_bytes):
+                break
+            delta32 = struct.unpack(f"{endian}i", file_bytes[idx : idx+4])[0]
+            idx += 4
+            curr_val += delta32
+        else:
+            curr_val += delta16
+
+        y_values.append(curr_val)
+
+    intensity = np.array(y_values, dtype=np.float64) * scale
+    n = len(intensity)
+    
+    if n > 1:
+        rt = np.linspace(start_time, end_time, n)
+    else:
+        rt = np.array([start_time])
+
+    meta = {
+        "source": Path(filepath).name,
+        "format": "Agilent .ch",
+        "points": n,
+        "version": version
+    }
+    return rt, intensity, meta
+
+
 def load_any_file(filepath: str) -> tuple[np.ndarray, np.ndarray, dict]:
     """
-    Unified loader that routes to the correct format parser (.cdf, .mzml, or .xms/.sms) 
-    based on the file suffix. Serves as a single entry point for all raw instrument files 
-    in the chromatography processing pipeline.
+    Unified loader that routes to the correct format parser (.cdf, .mzml, .xms, or .ch) 
+    based on the file suffix. Serves as a single entry point for all raw instrument files.
     """
-    suffix = Path(filepath).suffix.lower()
+    path = Path(filepath)
+    if path.is_dir():
+        ch_files = list(path.glob("*.ch")) + list(path.glob("*.CH"))
+        if ch_files:
+            filepath = str(ch_files[0])
+            path = Path(filepath)
+        else:
+            raise FileNotFoundError(f"No .ch files found in directory {filepath}")
+
+    suffix = path.suffix.lower()
     if suffix == ".mzml":
-        rt, intensity, meta, _ = load_mzml(filepath)
+        rt, intensity, meta, _ = load_mzml(str(path))
     elif suffix in (".xms", ".sms"):
-        rt, intensity, meta, _ = load_xms(filepath)
+        rt, intensity, meta, _ = load_xms(str(path))
+    elif suffix in (".ch", ".CH"):
+        rt, intensity, meta = load_agilent_ch(str(path))
     else:
-        rt, intensity, meta = load_cdf(filepath)
+        rt, intensity, meta = load_cdf(str(path))
     return rt, intensity, meta
 
 
@@ -400,8 +491,14 @@ def validate_total_area(rt: np.ndarray, corrected: np.ndarray, peaks: list[dict]
 
 
 def parse_cdf(filepath: str) -> dict:
-    """Full pipeline: load .cdf/.mzML/.xms → ALS baseline → peak detect → trapz validate → JSON dict."""
+    """Full pipeline: load .cdf/.mzML/.xms/.ch → ALS baseline → peak detect → trapz validate → JSON dict."""
     filepath_path = Path(filepath)
+    if filepath_path.is_dir():
+        ch_files = list(filepath_path.glob("*.ch")) + list(filepath_path.glob("*.CH"))
+        if ch_files:
+            filepath_path = ch_files[0]
+            filepath = str(filepath_path)
+            
     suffix = filepath_path.suffix.lower()
     
     spectra_data = None
@@ -409,6 +506,8 @@ def parse_cdf(filepath: str) -> dict:
         rt, intensity, meta, spectra_data = load_mzml(filepath)
     elif suffix in (".xms", ".sms"):
         rt, intensity, meta, spectra_data = load_xms(filepath)
+    elif suffix in (".ch", ".CH"):
+        rt, intensity, meta = load_agilent_ch(filepath)
     else:
         rt, intensity, meta = load_cdf(filepath)
 
@@ -426,6 +525,12 @@ def parse_cdf(filepath: str) -> dict:
                     if len(mz_vals) > 0:
                         p["mz_values"] = [round(float(m), 2) for m in mz_vals]
                         p["intensity_values"] = [round(float(val), 1) for val in int_vals]
+    elif suffix in (".ch", ".CH", ".cdf", ".CDF"):
+        # For FID signals (.ch or 1D .cdf), there are no mass spectra fragments.
+        # We set default peak mz/intensity values to represent FID detection.
+        for p in peaks:
+            p["mz_values"] = [0.0]
+            p["intensity_values"] = [round(p["peak_height_mAU"], 1)]
     else:
         ds = nc.Dataset(filepath, "r")
         if "scan_index" in ds.variables and "mass_values" in ds.variables and "intensity_values" in ds.variables and "point_count" in ds.variables:
@@ -465,7 +570,9 @@ def main():
         files = (list(cdf_dir.glob("*.cdf")) + list(cdf_dir.glob("*.CDF")) + 
                  list(cdf_dir.glob("*.mzml")) + list(cdf_dir.glob("*.mzML")) +
                  list(cdf_dir.glob("*.xms")) + list(cdf_dir.glob("*.XMS")) +
-                 list(cdf_dir.glob("*.sms")) + list(cdf_dir.glob("*.SMS")))
+                 list(cdf_dir.glob("*.sms")) + list(cdf_dir.glob("*.SMS")) +
+                 list(cdf_dir.glob("*.ch")) + list(cdf_dir.glob("*.CH")) +
+                 list(cdf_dir.glob("*.d")) + list(cdf_dir.glob("*.D")))
         if not files:
             print(f"Usage: python parse_cdf.py <file.cdf/.mzml/.xms>")
             print(f"   or: place chromatogram files in {cdf_dir}")
