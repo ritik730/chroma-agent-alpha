@@ -1,0 +1,4 @@
+# Force Git to treat Word documents, Excel files, and PDFs as binary to prevent corruption
+*.docx binary
+*.xlsx binary
+*.pdf binary
