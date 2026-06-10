@@ -26,9 +26,13 @@ The pipeline runs through seven sequential steps:
 0. **Format Conversion:** We intercept proprietary binary folders (like Agilent `.D` or Thermo `.RAW`) and convert them to open `.mzML` files using ProteoWizard's `msconvert` tool.
 1. **File Ingestion:** The script reads raw `.cdf`, `.mzML`, or Varian `.xms` files using a custom Python parser built with `netcdf4` and `pyteomics`. Additionally, it includes a native, pure-Python binary parser for Agilent ChemStation and OpenLab `.ch` FID files. This parser automatically detects version signatures, decodes absolute starting values and 16-bit/32-bit delta-compressed integer streams, and scales intensities by the header's scaling factor without external runtime dependencies. It extracts retention times, intensity values, and $m/z$ spectra directly into memory.
 2. **Baseline Correction:** Column bleed and baseline drift can ruin peak calculations. We apply Asymmetric Least Squares (ALS) baseline correction. The corrected signal vector $\mathbf{z}$ is computed by minimizing the penalized objective function:
+
 $$S = \sum\_{i} w\_i (y\_i - z\_i)^2 + \lambda \sum\_{i} (\Delta^2 z\_i)^2$$
+
 where $y\_i$ is the raw intensity, $z\_i$ is the baseline, $\Delta^2$ is the second-order difference operator, and $\lambda$ is a smoothness parameter (set between $10^3$ and $10^6$). The asymmetric weights $w\_i$ are:
+
 $$w\_i = \begin{cases} p & \text{if } y\_i > z\_i \\ 1-p & \text{if } y\_i \le z\_i \end{cases}$$
+
 We keep the asymmetry parameter $p$ between $0.001$ and $0.01$ so the baseline doesn't eat into the real peaks.
 3. **Peak Detection and Area Integration:** We use `scipy.signal.find_peaks` to identify peak boundaries. Once peak boundaries are identified, the pipeline calculates standard chromatographic **System Suitability Testing (SST)** metrics to assess column efficiency and signal quality prior to integration:
    - *USP Tailing Factor ($T$):* Evaluated at 5% peak height: $T = W\_{0.05} / (2f)$ with sub-point interpolation.
@@ -36,20 +40,30 @@ We keep the asymmetry parameter $p$ between $0.001$ and $0.01$ so the baseline d
    - *USP Peak Resolution ($R\_s$):* Evaluated between adjacent peaks: $R\_s = 2(t\_{R2} - t\_{R1}) / (w\_1 + w\_2)$.
    - *Signal-to-Noise Ratio ($S/N$):* Calculates baseline noise standard deviation from signal points outside of all peak regions.
    Once validated, peak areas are integrated using the trapezoidal rule:
+
 $$A = \sum\_{i=1}^{n} \frac{y\_{i-1} + y\_i}{2} (x\_i - x\_{i-1})$$
+
    We set strict bounds to ensure we don't end up with negative areas.
 4. **GNN-Based Peak Deconvolution & Hybrid Curve Fitting:** Standard integration methods fail when peaks overlap, double-counting the shared signal area. We solve this by building a 1D temporal-spectral graph $G = (V, E)$ for each co-eluting region where scan steps are nodes $v\_i \in V$ and edges $e\_{ij} \in E$ connect adjacent time points. 
    We introduce **Adaptive GNN Thresholding** to dynamically optimize the GCN graph connectivity parameter (temporal proximity threshold $\theta\_p$) based on local peak density, widths, and spectral similarity:
+
 $$\theta\_p = \text{clip}\left(\bar{W}\_{norm} \times 1.5 \times \frac{1}{\sqrt{K}} \times (1 - 0.25 C\_{avg}), 0.1, 0.7\right)$$
+
    where $\bar{W}\_{norm}$ is the average normalized peak width, $K$ is the number of co-eluting peaks, and $C\_{avg}$ is the average pairwise spectral cosine similarity between peak apexes. This prevents graph over-smoothing in dense or highly-correlated clusters.
    
    A two-layer Graph Convolutional Network (GCN) classifies the nodes and predicts component purity scores. Using these GCN priors, the system fits an **Exponentially Modified Gaussian (EMG)** curve model to the peaks via non-linear optimization:
+
 $$f(t; h, t\_R, \sigma, \tau) = h \frac{\sigma}{\tau} \sqrt{\frac{\pi}{2}} \exp\left(\frac{\sigma^2}{2\tau^2} - \frac{t - t\_R}{\tau}\right) \text{erfc}\left(\frac{\sigma}{\sqrt{2}\tau} - \frac{t - t\_R}{\sqrt{2}\sigma}\right)$$
+
    where $h$ is height, $t\_R$ is retention time, $\sigma$ is Gaussian width, and $\tau$ is exponential relaxation time. To prevent CPU hangs on large clusters ($K > 5$), a fallback mechanism automatically skips non-linear curve fitting and resolves areas directly from fast GCN node class probabilities.
    The GCN classification is calculated as:
+
 $$\mathbf{h}\_i^{(l+1)} = \sigma \left( \mathbf{W}^{(l)} \sum\_{j \in \mathcal{N}(i) \cup \{i\}} \frac{1}{\sqrt{\tilde{d}\_i \tilde{d}\_j}} \mathbf{h}\_j^{(l)} \right)$$
+
 5. **Spectral Identification:** We compare mass spectra at resolved peak apexes against libraries using Cosine similarity:
+
 $$S\_C = \frac{\mathbf{u} \cdot \mathbf{v}}{\|\mathbf{u}\| \|\mathbf{v}\|}$$
+
    If local matches are below 0.7, the pipeline queries OpenRouter APIs via a LiteLLM proxy. It also looks for diagnostic fragments (like $m/z$ 73 and 147 for TMS derivatization) to tag compound names.
 6. **FAIR Data Storage:** We structure peak tables with Polars and save them as compressed Zarr v3 arrays. We log data lineage and tracking UIDs in a local SQLite-backed LaminDB instance.
 
@@ -60,8 +74,11 @@ $$S\_C = \frac{\mathbf{u} \cdot \mathbf{v}}{\|\mathbf{u}\| \|\mathbf{v}\|}$$
 
 ### 2.3 USP <467> Residual Solvents Calculations
 To check residual solvents in active pharmaceutical ingredients, the pipeline calculates concentrations in parts-per-million ($ppm$) following USP <467> guidelines:
+
 $$\text{Response Factor} = \frac{A_{std}}{C_{std}}$$
+
 $$\text{Concentration (ppm)} = \frac{A_{sample}}{\text{Response Factor} \times \text{Sample Weight}}$$
+
 We compare the output concentrations against Class 1 and Class 2 toxicity limits (such as Benzene: 2 ppm, Toluene: 890 ppm). If a solvent exceeds these limits, the dashboard flags the run as `FAIL`.
 
 ### 2.4 Multi-Tier API Routing

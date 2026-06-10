@@ -3,7 +3,7 @@
 ## Current Project Phase
 - **Phase**: Manuscript Submission & PhD Candidacy Outreach
 - **Status**: Active Drafting
-- **Active Task**: Completed both Track A (Software upgrades) and Track B (Academic Placement updates) successfully. Implemented and verified Adaptive GNN Proximity Thresholding in `gnn_deconv.py` to dynamically optimize graph connectivity bounds based on peak widths, component densities, and spectral cosine similarities. Validated the adaptive thresholding mathematical models and edge constraints via unit tests in `test_software_track.py`. Updated the SLAS Technology Manuscript Draft, Project Architecture Report, repository README, and Project Progress Specs with the new capabilities (SST metrics, GNN-EMG hybrid curve fitting, Agilent binary ingestion, adaptive thresholding, and Sakoe-Chiba DTW alignment). Compiled all markdown files into styled Microsoft Word `.docx` documents using `md_to_docx.py` in the virtual environment. Verified all portfolio outputs are fully synchronized and up-to-date.
+- **Active Task**: Resolved equation rendering errors in the SLAS Technology manuscript and Project Report. Inserted blank lines before and after every LaTeX block math equation (`$$`) in both markdown documents to enable MathJax to parse them as display blocks instead of merging them inline. Upgraded the `md_to_docx.py` compiler to pre-normalize escaped underscores (`\_` to `_`), add missing math blocks (Cosine similarity, corrected area), and support more math symbols. Successfully recompiled the document portfolio and synchronized the latest version to GitHub.
 
 
 ---
