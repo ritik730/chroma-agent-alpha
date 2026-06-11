@@ -14,3 +14,7 @@ processed/*
 !processed/.gitkeep
 processed_results/*
 !processed_results/.gitkeep
+
+# Ignore scratch benchmark spreadsheet
+scratch_comparison_results.xlsx
+
