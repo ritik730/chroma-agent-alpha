@@ -3,7 +3,7 @@
 ## Current Project Phase
 - **Phase**: Manuscript Submission & PhD Candidacy Outreach
 - **Status**: Active Drafting / Application Preparation
-- **Active Task**: Reconstructed and refined the PhD application Academic CV (saved under `scratch/phd_cv_project/`). Based on the user's feedback, completely pivoted their positioning to an **"AI-Enabled Chemist & Workflow Orchestrator"**. The new CV accurately reflects their actual experience: it highlights their wet-lab chemistry degree and Teva GC training, focuses on **n8n workflow automation** and **AI agent direction/prompting** for code generation, and removes any claims of manual Python coding or synthesis tasks. Corrected and refined their role at Artistic Shots (**Technical & Digital Marketing Lead**) to reflect honest AI-driven digital marketing work (design, scriptwriting, SEO optimized posting), completely removing the ADGA section per user request.
+- **Active Task**: Fully executed **Track B (Academic Placement)** tasks. Migrated the revised Academic CV (`cv_draft.md` and LaTeX `cv.tex`) from scratch to the Desktop portfolio (`PhD Roadmap\05_Application_Templates\`). Drafted a tailored, high-impact **Statement of Purpose (SOP)** (`sop_draft.md`) using the candidate's core positioning narrative (*"I don't run the machines. I build the brains that analyze their telemetry."*). Compiled both markdown drafts to styled Word documents (`cv_draft.docx` and `sop_draft.docx`) containing native equation objects. Synchronized and pushed updated portfolio files to the repository main branch.
 
 
 
