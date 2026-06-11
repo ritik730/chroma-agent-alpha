@@ -2,8 +2,9 @@
 
 ## Current Project Phase
 - **Phase**: Manuscript Submission & PhD Candidacy Outreach
-- **Status**: Active Drafting
-- **Active Task**: Resolved equation rendering errors in the SLAS Technology manuscript and Project Report. Inserted blank lines before and after every LaTeX block math equation (`$$`) in both markdown documents to enable MathJax to parse them as display blocks instead of merging them inline. Upgraded the `md_to_docx.py` compiler to pre-normalize escaped underscores (`\_` to `_`), add missing math blocks (Cosine similarity, corrected area), and support more math symbols. Successfully recompiled the document portfolio and synchronized the latest version to GitHub.
+- **Status**: Active Drafting / Application Preparation
+- **Active Task**: Reconstructed and refined the PhD application Academic CV (saved under `scratch/phd_cv_project/`). Based on the user's feedback, completely pivoted their positioning to an **"AI-Enabled Chemist & Workflow Orchestrator"**. The new CV accurately reflects their actual experience: it highlights their wet-lab chemistry degree and Teva GC training, focuses on **n8n workflow automation** and **AI agent direction/prompting** for code generation, and removes any claims of manual Python coding or synthesis tasks. Corrected and refined their role at Artistic Shots (**Technical & Digital Marketing Lead**) to reflect honest AI-driven digital marketing work (design, scriptwriting, SEO optimized posting), completely removing the ADGA section per user request.
+
 
 
 ---
