@@ -12,6 +12,7 @@ Start: python scripts/pipeline_server.py
 Port:  8001
 """
 import json
+from contextlib import asynccontextmanager
 import os
 import subprocess
 import sys
@@ -49,10 +50,16 @@ WATCHER_STATUS = {
 PROC_DIR.mkdir(parents=True, exist_ok=True)
 RESULTS_DIR.mkdir(exist_ok=True)
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    start_folder_watcher()
+    yield
+
 app = FastAPI(
     title="CHROMA-AGENT-ALPHA Pipeline Server",
     description="HTTP API wrapping GC-MS chromatography pipeline stages for n8n orchestration.",
     version="1.0.0",
+    lifespan=lifespan,
 )
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
@@ -375,6 +382,16 @@ def run_enrich(req: EnrichRequest, username: str = Depends(authenticate_user)):
 
     # Filter only peaks that are actually unidentified or unknown to save API calls and time
     peaks_to_enrich = [p for p in req.peaks if p.get("compound_name") in ("unidentified", "unknown") or not p.get("compound_name")]
+    
+    # Sort by peak area and height descending to prioritize significant signals
+    peaks_to_enrich.sort(
+        key=lambda p: (float(p.get("peak_area_mAU") or p.get("area") or 0.0), float(p.get("peak_height_mAU") or p.get("height") or 0.0)),
+        reverse=True
+    )
+    
+    # Limit to top N peaks to prevent huge number of API calls and timeouts
+    limit_enrich = int(os.environ.get("CHROMA_LIMIT_LLM_PEAKS", "10"))
+    peaks_to_enrich = peaks_to_enrich[:limit_enrich]
     
     chunk_size = 15
     enriched_results = []
@@ -1966,9 +1983,7 @@ def start_folder_watcher():
     watcher_thread.start()
 
 
-@app.on_event("startup")
-def startup_event():
-    start_folder_watcher()
+
 
 
 if __name__ == "__main__":

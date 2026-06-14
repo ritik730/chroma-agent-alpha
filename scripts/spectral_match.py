@@ -367,22 +367,45 @@ def match_peaks(peaks_data: dict, library: list[Spectrum]) -> dict:
         best_score = 0.0
         best_match = None
 
-        for r_idx, ref in enumerate(library):
-            score_tuple = scores.scores_by_query(queries[q_idx], "CosineGreedy_score")
-            if len(score_tuple) > 0:
-                for ref_spec, (score_val, n_matched) in score_tuple:
+        # Check if the peak is 1D FID (mz is [0.0] or empty)
+        is_fid = (peak.get("mz_values") == [0.0] or not peak.get("mz_values"))
+        
+        if is_fid:
+            # Match based purely on retention time window
+            rt = peak.get("retention_time", 0.0)
+            for ref in library:
+                rt_min = ref.metadata.get("rt_window_min", 0.0)
+                rt_max = ref.metadata.get("rt_window_max", float("inf"))
+                if rt_min <= rt <= rt_max:
+                    # Choose closest window center if multiple windows match
+                    rt_center = (rt_min + rt_max) / 2.0
+                    score_val = 1.0 - abs(rt - rt_center) / (rt_max - rt_min) if (rt_max - rt_min) > 0 else 1.0
+                    score_val = max(0.5, min(1.0, score_val))
                     if score_val > best_score:
-                        rt = peak.get("retention_time", 0.0)
-                        rt_min = ref_spec.metadata.get("rt_window_min", 0)
-                        rt_max = ref_spec.metadata.get("rt_window_max", float("inf"))
-                        if rt_min <= rt <= rt_max or rt_min == 0:
-                             best_score = float(score_val)
-                             best_match = {
-                                 "compound_name": ref_spec.metadata.get("compound_name", "unknown"),
-                                 "compound_class": ref_spec.metadata.get("compound_class", "unknown"),
-                                 "n_fragments_matched": int(n_matched),
-                             }
-                break
+                        best_score = score_val
+                        best_match = {
+                            "compound_name": ref.metadata.get("compound_name", "unknown"),
+                            "compound_class": ref.metadata.get("compound_class", "unknown"),
+                            "n_fragments_matched": 1,
+                        }
+        else:
+            # Match using matchms cosine similarity for 3D GC-MS spectra
+            for r_idx, ref in enumerate(library):
+                score_tuple = scores.scores_by_query(queries[q_idx], "CosineGreedy_score")
+                if len(score_tuple) > 0:
+                    for ref_spec, (score_val, n_matched) in score_tuple:
+                        if score_val > best_score:
+                            rt = peak.get("retention_time", 0.0)
+                            rt_min = ref_spec.metadata.get("rt_window_min", 0)
+                            rt_max = ref_spec.metadata.get("rt_window_max", float("inf"))
+                            if rt_min <= rt <= rt_max or rt_min == 0:
+                                 best_score = float(score_val)
+                                 best_match = {
+                                     "compound_name": ref_spec.metadata.get("compound_name", "unknown"),
+                                     "compound_class": ref_spec.metadata.get("compound_class", "unknown"),
+                                     "n_fragments_matched": int(n_matched),
+                                 }
+                    break
 
         if best_match and best_score >= SIMILARITY_THRESHOLD:
             matches.append({
@@ -403,7 +426,7 @@ def match_peaks(peaks_data: dict, library: list[Spectrum]) -> dict:
     for peak_idx in query_peak_map:
         if peak_idx not in matched_indices:
             peak = peaks[peak_idx]
-            if peak.get("mz_values") and peak.get("intensity_values"):
+            if peak.get("mz_values") and peak.get("intensity_values") and peak.get("mz_values") != [0.0]:
                 unmatched_peaks_to_query.append(peak_idx)
 
     # Sort unmatched peaks by area descending, then height descending to prioritize significant signals
@@ -411,8 +434,13 @@ def match_peaks(peaks_data: dict, library: list[Spectrum]) -> dict:
         key=lambda idx: (peaks[idx].get("peak_area_mAU", 0.0), peaks[idx].get("peak_height_mAU", 0.0)),
         reverse=True
     )
-    # Limit query to top 100 peaks (encompassing almost all peaks in standard chromatograms)
-    unmatched_peaks_to_query = unmatched_peaks_to_query[:100]
+    # Limit query to top N peaks to prevent excessive API costs and pipeline hangs
+    disable_llm = os.environ.get("CHROMA_DISABLE_LLM_MATCH", "false").lower() == "true"
+    limit_llm = int(os.environ.get("CHROMA_LIMIT_LLM_PEAKS", "5"))
+    if disable_llm:
+        unmatched_peaks_to_query = []
+    else:
+        unmatched_peaks_to_query = unmatched_peaks_to_query[:limit_llm]
 
     # Query LLM for all unmatched peaks in batches of 15 to avoid exceeding token and output limits
     chunk_size = 15

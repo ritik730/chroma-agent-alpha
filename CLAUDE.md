@@ -23,7 +23,7 @@ No local LLM models. Zero local compute. All inference is cloud via OpenRouter.
 | Tier | Model | Purpose | Cost |
 |------|-------|---------|------|
 | T1 | google/gemini-2.5-flash-lite | classify, label, json_reformat, dedup | ~₹0.010/call |
-| T2 | deepseek/deepseek-v4-flash:free | summarize, enrich, compact_memory, research_synthesis | ₹0 |
+| T2 | google/gemma-4-31b-it:free | summarize, enrich, compact_memory, research_synthesis | ₹0 |
 | T3 | deepseek/deepseek-v4-flash | all coding, pipeline, GNN, scientific analysis | ~₹0.011/call |
 
 Budget ceiling: ≤₹500/month | Projected actual: ~₹52/month OpenRouter
@@ -31,7 +31,7 @@ Budget ceiling: ≤₹500/month | Projected actual: ~₹52/month OpenRouter
 ### Mid-session model switch
 ```
 /model claude-t1    # T1: Gemini Flash Lite (scout/classify)
-/model claude-t2    # T2: DeepSeek V4 Flash free (analysis)
+/model claude-t2    # T2: Gemma 4 31B free (analysis)
 /model claude-t3    # T3: DeepSeek V4 Flash paid (coding/science)
 ```
 

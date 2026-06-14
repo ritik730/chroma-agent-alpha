@@ -25,10 +25,10 @@ model_list:
       rpm: 30
       tpm: 80000
 
-  # ── T2: Analyst — DeepSeek V4 Flash FREE (1M ctx, ₹0) ───────────
+  # ── T2: Analyst — Gemma 4 31B FREE (₹0) ──────────────────────────
   - model_name: "claude-t2"
     litellm_params:
-      model: "openrouter/deepseek/deepseek-v4-flash:free"
+      model: "openrouter/google/gemma-4-31b-it:free"
       api_key: "os.environ/OPENROUTER_API_KEY"
       supports_function_calling: true
       max_tokens: 8192
@@ -38,10 +38,10 @@ model_list:
       rpm: 20                # free-tier is aggressively limited upstream
       tpm: 80000
 
-  # ── T2-FREE: Llama fallback (free, avoids paid t3 on rate-limit) ─
+  # ── T2-FREE: Gemma fallback (free, avoids paid t3 on rate-limit) ──
   - model_name: "claude-t2-free"
     litellm_params:
-      model: "openrouter/meta-llama/llama-3.3-70b-instruct:free"
+      model: "openrouter/google/gemma-4-31b-it:free"
       api_key: "os.environ/OPENROUTER_API_KEY"
       supports_function_calling: true
       max_tokens: 8192
@@ -110,10 +110,10 @@ router_settings:
   allowed_fails: 2           # ← increased from 1 — less aggressive cooldown
   cooldown_time: 30          # ← NEW: cool down a deployment for 30s after failures
   fallbacks:
-    - {"claude-t1": ["claude-t2", "claude-proxy-flash"]}
-    - {"claude-t1-free": ["claude-t1", "claude-proxy-flash"]}
-    - {"claude-t2": ["claude-t2-free", "claude-t3", "claude-proxy-flash"]}
-    - {"claude-t2-free": ["claude-t3", "claude-proxy-flash"]}
-    - {"claude-t3": ["claude-t1", "claude-proxy-pro"]}
-    - {"claude-t3-cot": ["claude-t3", "claude-proxy-pro"]}
+    - {"claude-t1": ["claude-t2"]}
+    - {"claude-t1-free": ["claude-t2"]}
+    - {"claude-t2": ["claude-t2-free"]}
+    - {"claude-t2-free": []}
+    - {"claude-t3": ["claude-t2"]}
+    - {"claude-t3-cot": ["claude-t2"]}
 

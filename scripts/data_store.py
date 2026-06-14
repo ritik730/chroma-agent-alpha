@@ -131,7 +131,7 @@ def save_run_to_zarr(
     # 3. Construct Zarr Arrays
     # Open/Create global multi-sample Zarr group
     os.makedirs(os.path.dirname(ZARR_STORE_PATH), exist_ok=True)
-    root = zarr.open_group(ZARR_STORE_PATH, mode="w")
+    root = zarr.open_group(ZARR_STORE_PATH, mode="a")
     
     # Create or replace subgroup for this sample
     sample_group = root.create_group(sample_id, overwrite=True)

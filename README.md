@@ -59,7 +59,7 @@ To ensure feasibility for academic labs and individual researchers, CHROMA-AGENT
 | Tier | Model | Tasks | Avg. Cost | Cost-Control Role |
 |---|---|---|---|---|
 | **T1 Scout** | `google/gemini-2.5-flash-lite` | Structural reformats, labels, JSON validation | ~₹0.010 / call | Primary low-cost worker; handles 92% of traffic. |
-| **T2 Analyst** | `deepseek/deepseek-v4-flash:free` | Memory summaries, text enrichment, class mappings | ₹0 / call | Free tier integration for non-critical summaries. |
+| **T2 Analyst** | `google/gemma-4-31b-it:free` | Memory summaries, text enrichment, class mappings | ₹0 / call | Free tier integration for non-critical summaries. |
 | **T3 Architect**| `deepseek/deepseek-v4-flash` | Coding, GNN model configuration, pipeline execution | ~₹0.011 / call | Mid-tier for code updates and execution logs. |
 | **T3-CoT** | `deepseek-r1-distill-qwen-32b` | Complex mathematical/logical reasoning, deconv audits | ~₹0.030 / call | Called only for auditing high-overlap ambiguity. |
 | **T4 Fallback** | `Claude Sonnet/Opus (local proxy)` | Final automated pipeline fallback | Capped by quota | Offline local proxy fallback to prevent billing spikes. |
