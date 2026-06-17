@@ -154,6 +154,45 @@ def test_agilent_ch_ingestion():
         if os.path.exists(mock_file_path):
             os.remove(mock_file_path)
 
+    # Now, test version 817
+    version_817 = 817
+    # Start time = 60000.0 ms (1.0 min)
+    start_time_ms = 60000.0
+    # End time = 600000.0 ms (10.0 min)
+    end_time_ms = 600000.0
+    
+    header_817 = bytearray(6144)
+    struct.pack_into(">H", header_817, 0, version_817)
+    struct.pack_into(">f", header_817, 282, start_time_ms)
+    struct.pack_into(">f", header_817, 286, end_time_ms)
+    
+    # 50 points of float64 data: from 100.0 to 149.0
+    data_817 = bytearray()
+    for v in range(100, 150):
+        data_817.extend(struct.pack("<d", float(v)))
+        
+    mock_file_path_817 = "processed/mock_agilent_817.ch"
+    with open(mock_file_path_817, "wb") as f:
+        f.write(header_817)
+        f.write(data_817)
+        
+    try:
+        rt_817, intensity_817, meta_817 = parse_cdf.load_agilent_ch(mock_file_path_817)
+        print(f"  Parsed {meta_817['points']} points from mock Agilent v817 .ch")
+        print(f"  Start Time: {rt_817[0]:.2f} (expected 1.0), End Time: {rt_817[-1]:.2f} (expected 10.0)")
+        print(f"  First point intensity: {intensity_817[0]:.2f} (expected 100.0)")
+        print(f"  Last point intensity: {intensity_817[-1]:.2f} (expected 149.0)")
+        
+        assert meta_817["points"] == 50
+        assert np.isclose(rt_817[0], 1.0)
+        assert np.isclose(rt_817[-1], 10.0)
+        assert np.isclose(intensity_817[0], 100.0)
+        assert np.isclose(intensity_817[-1], 149.0)
+        print("[PASS] Agilent v817 .ch binary parser successfully validated!")
+    finally:
+        if os.path.exists(mock_file_path_817):
+            os.remove(mock_file_path_817)
+
 
 def test_adaptive_gnn_thresholding():
     print("[TEST] Running Adaptive GNN Thresholding verification...")

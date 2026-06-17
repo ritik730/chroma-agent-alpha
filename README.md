@@ -73,7 +73,7 @@ To ensure feasibility for academic labs and individual researchers, CHROMA-AGENT
 | Stage | Name | Status | Description |
 |---|---|---|---|
 | **Stage 0** | Universal Format Conversion | ✅ DONE | Intercepts proprietary Agilent (`.D`), Thermo (`.RAW`), and Waters (`.RAW`) folders in the watch directory and runs ProteoWizard's `msconvert.exe` to transcode them to `.mzML` format. |
-| **Stage 1** | Telemetry Ingestion & Parsing | ✅ DONE | Custom parser extracting coordinate matrices from NetCDF4 (`.cdf`), `.mzML`, Varian `.xms` binaries, and Agilent ChemStation `.ch` files (via raw delta-compression stride decoding). |
+| **Stage 1** | Telemetry Ingestion & Parsing | ✅ DONE | Custom parser extracting coordinate matrices from NetCDF4 (`.cdf`), `.mzML`, Varian `.xms` binaries, and Agilent ChemStation `.ch` files (supporting both classic delta-compressed integer streams and version 817 flat double precision formats). |
 | **Stage 2** | Baseline Correction | ✅ DONE | Implements Asymmetric Least Squares (ALS) baseline subtraction prior to peak detection to isolate background drift. |
 | **Stage 3** | Peak Detection & SST | ✅ DONE | Identifies elution boundaries and calculates **System Suitability Testing (SST)** metrics (USP Tailing, Theoretical Plates, adjacent Peak Resolution, and S/N). |
 | **Stage 4** | Numerical Integration | ✅ DONE | Integrates peak areas using the Trapezoidal Rule, validated against `numpy.trapezoid` for mathematical accuracy. |

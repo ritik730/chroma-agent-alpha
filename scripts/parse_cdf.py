@@ -341,6 +341,39 @@ def load_agilent_ch(filepath: str) -> tuple[np.ndarray, np.ndarray, dict]:
 
     endian = "<" if is_little else ">"
 
+    if version == 817:
+        # Version 817 uses BE for header metadata, but stores data as flat LE float64 (double)
+        # Times in header are in milliseconds and must be converted to minutes.
+        try:
+            start_time = struct.unpack(">f", file_bytes[282:286])[0] / 60000.0
+            end_time = struct.unpack(">f", file_bytes[286:290])[0] / 60000.0
+        except Exception:
+            start_time = 0.0
+            end_time = 60.0
+
+        data_offset = 6144
+        if len(file_bytes) > data_offset:
+            data_bytes = file_bytes[data_offset:]
+            n = len(data_bytes) // 8
+            y_values = struct.unpack(f"<{n}d", data_bytes[:n*8])
+            intensity = np.array(y_values, dtype=np.float64)
+        else:
+            intensity = np.array([], dtype=np.float64)
+            n = 0
+            
+        if n > 1:
+            rt = np.linspace(start_time, end_time, n)
+        else:
+            rt = np.array([start_time])
+            
+        meta = {
+            "source": Path(filepath).name,
+            "format": "Agilent .ch",
+            "points": n,
+            "version": version
+        }
+        return rt, intensity, meta
+
     try:
         start_time = struct.unpack(f"{endian}f", file_bytes[282:286])[0]
         end_time = struct.unpack(f"{endian}f", file_bytes[286:290])[0]

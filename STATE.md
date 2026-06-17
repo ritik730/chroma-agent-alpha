@@ -1,9 +1,9 @@
 # GSD Persistent State Map — CHROMA-AGENT-ALPHA
 
 ## Current Project Phase
-- **Phase**: Manuscript Submission & PhD Candidacy Outreach
-- **Status**: Active Drafting / Application Preparation
-- **Active Task**: Fully executed **Track B (Academic Placement)** tasks. Migrated the revised Academic CV (`cv_draft.md` and LaTeX `cv.tex`) from scratch to the Desktop portfolio (`PhD Roadmap\05_Application_Templates\`). Drafted a tailored, high-impact **Statement of Purpose (SOP)** (`sop_draft.md`) using the candidate's core positioning narrative (*"I don't run the machines. I build the brains that analyze their telemetry."*). Compiled both markdown drafts to styled Word documents (`cv_draft.docx` and `sop_draft.docx`) containing native equation objects. Synchronized and pushed updated portfolio files to the repository main branch.
+- **Phase**: Technical Implementation & Pipeline Verification
+- **Status**: Stable & Verified Bug-Free
+- **Active Task**: Fixed critical Agilent `.ch` v817 parser bug (times converted from ms to minutes, intensities parsed as flat LE doubles from offset 6144). Added v817 unit test case in `test_software_track.py`. Verified ingestion, deconvolution, spectral matching, and Zarr storage/quantification via `test_real_data_pipeline.py`. Started all services (LiteLLM, n8n, Pipeline Server) in the background.
 
 
 
