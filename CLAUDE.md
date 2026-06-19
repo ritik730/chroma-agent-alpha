@@ -10,6 +10,7 @@ No local LLM models. Zero local compute. All inference is cloud via OpenRouter.
 
 ## PIPELINE
 .cdf/.mzML/.D → netCDF4/xarray → ALS baseline → scipy.find_peaks → np.trapz → GNN deconv → JSON → n8n → FAIR store
+*Future Upgrade (Dormant Blueprint): Stage -1 Modeler (SMILES → GNN-QSPR → Poiseuille/Clausius-Clapeyron Solver) in [gc_modeler.py](file:///C:/chroma-agent-alpha/scripts/gc_modeler.py)*
 
 ## CODING RULES (enforced every script)
 1. All functions: docstring with chemical context

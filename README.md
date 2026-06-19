@@ -198,4 +198,12 @@ This pipeline is documented in the manuscript:
 
 ---
 
+## 8. Future Roadmap: Predictive Chromatogram Simulation
+To transition `CHROMA-AGENT-ALPHA` from a post-run processing pipeline to an active, closed-loop decision engine, the future development roadmap targets the integration of an in-silico chromatogram simulator:
+- **Physics-Informed Hybrid Modeling (GNN-QSPR):** A Graph Neural Network (GNN) will predict thermodynamic interaction constants (\(\Delta H_{\text{vap}}\) and \(\Delta S_{\text{vap}}\)) directly from molecular SMILES graphs (enabling simulation of unseen, newly synthesized compounds). These constants feed into dynamic capillary flow (Poiseuille) and retention (Clausius-Clapeyron) solver matrices.
+- **Active Method Development Loop:** If the GNN deconvolution stage detects overlapping peaks with a resolution \(R_s < 1.0\) that cannot be mathematically resolved, the agent will simulate alternative oven temperature ramps and flow rates to physically separate the compounds in a subsequent injection.
+- **Dormant Blueprint Ready:** The physical solvers and model architecture skeleton are laid out in [gc_modeler.py](file:///C:/chroma-agent-alpha/scripts/gc_modeler.py) and are prepared for validation during the 2027 PhD phase.
+
+---
+
 *Built by [Devendra Kataria](https://www.linkedin.com/in/devendra-kataria/) — MSc Chemistry (82%), Technical Lead & Informatics Researcher.*
