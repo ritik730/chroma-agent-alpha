@@ -40,6 +40,13 @@ Peak profiles are simulated by combining elution times $t_R$ and peak variances 
 
 $$f(t) = \frac{A_0}{\tau} \exp\left( \frac{\sigma^2}{2\tau^2} - \frac{t - t_R}{\tau} \right) \cdot \Phi\left( \frac{t - t_R}{\sigma} - \frac{\sigma}{\tau} \right)$$
 
+### D. Chromatography Method Translation (Blumberg Scaling Theory)
+To translate methods between different carrier gases (e.g., Helium to Hydrogen) or scale down column dimensions without losing resolution, we implement thermodynamic scaling relationships. The temperature ramp rate ($\beta_2$) of the target method is scaled by the ratio of column hold-up times ($t_{M1}, t_{M2}$):
+
+$$\beta_2 = \beta_1 \cdot \left(\frac{t_{M1}}{t_{M2}}\right)$$
+
+This ensures that the analytes elute at the exact same fractional temperature ($T_e$), preserving the exact elution order and relative resolution across different hardware dimensions.
+
 ---
 
 ## 3. Implementation Roadmap & PhD Milestones
@@ -58,13 +65,14 @@ The integration of the modeler into `CHROMA-AGENT-ALPHA` will proceed across fou
     *   Apply scaffold-splitting methods during validation to evaluate the model's prediction accuracy on structurally novel ("cold-start") molecules.
 *   **Deliverable:** A trained, CPU-optimized GNN model that outputs $(\Delta H_{\text{vap}}, \Delta S_{\text{vap}})$ predictions from a molecular SMILES string.
 
-### Phase 2: Capillary Migration Numerical Solver (Months 12–18)
-*   **Objective:** Code the physical dynamic migration solver in Python.
+### Phase 2: Capillary Migration & Method Translation Solver (Months 12–18)
+*   **Objective:** Code the physical dynamic migration and translation solver in Python.
 *   **Key Tasks:**
     *   Write a numerical integration solver (using Euler or Runge-Kutta methods) to calculate analyte column migration $X(t)$ under complex, multi-step oven temperature ramps $T(t)$.
     *   Implement temperature-dependent gas viscosity corrections and column compressibility factors.
+    *   Code the method translation equations (based on Blumberg scaling theory) to automatically scale gas velocities and temperature ramps when changing column sizes or carrier gas types.
     *   Generate synthetic `.mzML` raw mass spectrometry data files from simulated chromatographic peaks.
-*   **Deliverable:** A functional simulation engine (`chroma/simulation/gc_modeler.py`) validated against empirical retention times with $R^2 \ge 0.98$.
+*   **Deliverable:** A functional simulation and translation engine (`chroma/simulation/gc_modeler.py`) validated against empirical retention times with $R^2 \ge 0.98$.
 
 ### Phase 3: Closed-Loop Decision Engine & Web API (Months 18–24)
 *   **Objective:** Wire the simulator into the automated n8n and FastAPI pipeline.

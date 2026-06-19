@@ -236,6 +236,34 @@ class GCChromatogramModeler:
             
         return results
 
+    def translate_gc_method(
+        self,
+        original_temp_program: List[Tuple[float, float]],
+        t_M1: float,
+        t_M2: float
+    ) -> List[Tuple[float, float]]:
+        """
+        Translate a GC temperature program to run on a new column dimension or carrier gas.
+        Applies Blumberg Scaling Theory: beta_2 = beta_1 * (t_M1 / t_M2)
+        
+        Where:
+        - original_temp_program: List of (time_sec, temp_celsius) from method 1.
+        - t_M1: Hold-up (void) time of column 1 under method 1 conditions.
+        - t_M2: Hold-up (void) time of column 2 under target method 2 conditions.
+        
+        Returns:
+        - translated_temp_program: List of (time_sec, temp_celsius) for method 2.
+        """
+        # Time scale factor
+        scale_factor = t_M2 / t_M1
+        
+        translated_program = []
+        for time_sec, temp_celsius in original_temp_program:
+            # Scale time axis, keep temperature values identical to preserve fractional elution temperature (Te)
+            translated_program.append((time_sec * scale_factor, temp_celsius))
+            
+        return translated_program
+
 if __name__ == "__main__":
     # Test script integrity and physical directionality validation
     print("Testing GC Modeler mathematical models...")
@@ -256,5 +284,14 @@ if __name__ == "__main__":
     k_hot = calculate_retention_factor(40000.0, 90.0, 423.15)   # 150 C
     assert k_hot < k_cold, "GROUNDING.md check failed: Retention factor must decrease as temperature rises!"
     print(f"  Retention parameter check: PASSED (k' Cold: {k_cold:.2f}, k' Hot: {k_hot:.2f})")
+    
+    # 4. Method translation validation
+    modeler = GCChromatogramModeler()
+    original_ramp = [(0.0, 50.0), (600.0, 250.0)]  # 50C to 250C in 10 mins (20C/min)
+    t_M1 = 1.2  # 1.2 min void time (He carrier)
+    t_M2 = 0.6  # 0.6 min void time (H2 carrier - faster)
+    new_ramp = modeler.translate_gc_method(original_ramp, t_M1, t_M2)
+    assert new_ramp[1][0] == 300.0, "Translation scale calculation error"
+    print(f"  Method Translation check: PASSED (Scale factor: {t_M2/t_M1:.2f}, Target Ramp time: {new_ramp[1][0]:.1f} s)")
     
     print("\nGC Modeler base is fully set up and ready for PhD integration!")
