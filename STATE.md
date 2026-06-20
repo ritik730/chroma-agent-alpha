@@ -4,7 +4,7 @@
 - **Phase**: Technical Implementation & Pipeline Verification
 - **Status**: Stable & Verified Bug-Free
 - **Active Task**: Fixed critical Agilent `.ch` v817 parser bug (times converted from ms to minutes, intensities parsed as flat LE doubles from offset 6144). Added v817 unit test case in `test_software_track.py`. Verified ingestion, deconvolution, spectral matching, and Zarr storage/quantification via `test_real_data_pipeline.py`. Started all services (LiteLLM, n8n, Pipeline Server) in the background.
-- **Future Modeler Integration**: Created dormant physical GC-MS chromatogram modeler blueprint in [gc_modeler.py](file:///C:/chroma-agent-alpha/scripts/gc_modeler.py) and formal PhD research proposal/roadmap in [ROADMAP_GC_MODELER.md](file:///C:/chroma-agent-alpha/ROADMAP_GC_MODELER.md) to serve as a baseline for the 2027 PhD phase.
+- **Future Modeler Integration**: Created dormant physical GC-MS chromatogram modeler blueprint in [gc_modeler.py](file:///C:/chroma-agent-alpha/scripts/gc_modeler.py) for future validation.
 
 
 
