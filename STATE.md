@@ -3,7 +3,7 @@
 ## Current Project Phase
 - **Phase**: Technical Implementation & Pipeline Verification
 - **Status**: Stable & Verified Bug-Free
-- **Active Task**: Fixed critical Agilent `.ch` v817 parser bug (times converted from ms to minutes, intensities parsed as flat LE doubles from offset 6144). Added v817 unit test case in `test_software_track.py`. Verified ingestion, deconvolution, spectral matching, and Zarr storage/quantification via `test_real_data_pipeline.py`. Started all services (LiteLLM, n8n, Pipeline Server) in the background.
+- **Active Task**: Created an interactive Windows installer (`install.cmd` and `install.ps1`) to automate Python venv creation, `.env` generation, and n8n global checks. Configured folder junction linkage (`mklink /J`) between `raw_data` and raw instrument outputs. Placed `Start_All_Chroma_Services.cmd` and `Stop_All_Chroma_Services.cmd` shortcuts on the Desktop. Documented Python 3.10-3.12 compatibility constraints due to `numba`/`matchms` package builds failing on Python 3.13+. Imported Macro-to-Micro agent exchange context logs into the repository at `agent_exchange/`. Committed and pushed all upgrades to GitHub.
 - **Future Modeler Integration**: Created dormant physical GC-MS chromatogram modeler blueprint in [gc_modeler.py](file:///C:/chroma-agent-alpha/scripts/gc_modeler.py) for future validation.
 
 

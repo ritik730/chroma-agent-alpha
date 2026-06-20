@@ -58,8 +58,14 @@ RT=Retention Time | mAU=milli-Absorbance Units | ALS=Asymmetric Least Squares
 FAIR=Findable Accessible Interoperable Reusable | AIA/NetCDF=.cdf format
 Trapz: $A \approx \sum_{i} \frac{y_{i-1} + y_i}{2} (x_i - x_{i-1})$
 
-## LAUNCH
-cd C:\chroma-agent-alpha
-litellm-start          # starts LiteLLM proxy on :4000
-claude-t2              # launch Claude Code on T2 (default)
+## LAUNCH & INSTALLATION
+- **Deployment**: Double-click `install.cmd` (runs `install.ps1` as Administrator) to build the virtual environment, setup junctions, install n8n, and create desktop shortcuts.
+- **Python Version**: Install Python 3.10 - 3.12 (e.g. 3.12.9) only. *Do not use Python 3.13+ due to numba/matchms package build incompatibilities.*
+- **Startup**: Double-click `Start_All_Chroma_Services.cmd` on the Desktop to launch LiteLLM, the FastAPI Pipeline Server, and n8n in hidden background processes.
+- **Shutdown**: Double-click `Stop_All_Chroma_Services.cmd` on the Desktop.
+- **Manual Launch**:
+  ```cmd
+  cd C:\chroma-agent-alpha
+  .\start_all_services.cmd
+  ```
 
