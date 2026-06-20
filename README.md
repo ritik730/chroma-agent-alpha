@@ -91,9 +91,12 @@ To ensure feasibility for academic labs and individual researchers, CHROMA-AGENT
 
 ### Prerequisites
 *   Windows 10/11
-*   Python 3.13+
+*   **Python 3.10 - 3.12** (Highly Recommended)
 *   Node.js (for CLI router utilities)
 *   [ProteoWizard](https://proteowizard.org/) (for Stage 0 conversion support)
+
+> [!WARNING]
+> **Python 3.13+ Compatibility Warning:** Do not use Python 3.13+. Several critical scientific packages (specifically `numba`, which is a core dependency of `matchms`) do not yet support Python 3.13 and will fail to compile. Please install Python 3.12 or below (e.g. 3.12.9) on your system.
 
 ### Installation
 1.  **Clone the repository:**
