@@ -46,11 +46,13 @@ CHROMA-AGENT-ALPHA is an open-source, vendor-agnostic data processing pipeline a
 In addition to the single-run ETL pipeline, CHROMA features a **Multi-Sample Retention Time Alignment** engine. Accessible via the REST endpoint `POST /run/align` and integrated into the web dashboard, it downsamples raw profiles to a 1000-point timeline and executes a **Sakoe-Chiba constrained Dynamic Time Warping (DTW)** algorithm in under 110ms. This corrects linear and non-linear chromatography column drift, allowing side-by-side peak matching and overlay visualization in Chart.js.
 
 ### Dual-Agent Orchestration
-*   **Macro Brain:** Antigravity (Gemini Pro) — Structures plans, manages workflows, and drafts publication manuscripts.
+*   **Macro Brain:** Antigravity (Gemini Pro) — Structures plans and manages workflows.
 *   **Micro Engine:** Claude Code — Executes file operations, runs validation pipelines, and manages local service deployment.
 
 ### Cost-Governance: Limiting the LLM Bill to ₹500/Month
 To ensure feasibility for academic labs and individual researchers, CHROMA-AGENT-ALPHA implements a strict cost-gating routing layer managed by LiteLLM (Port 4000) to keep total monthly LLM operating costs under **₹500 (approx. $6 USD)**:
+
+*   **Cost-Control & Upgradability Rationale:** Enterprise AI inference costs can rapidly drain operational budgets if left unchecked. To mitigate this, CHROMA-AGENT-ALPHA leverages a local proxy and highly cost-effective cloud models as its primary processing brain. The architecture is fully modular: once direct Claude subscriptions or larger budgets become available, the local fallback proxy and T1/T2/T3 models can be swapped out for native, more powerful Claude models (or other high-tier LLMs) directly in the `litellm_config.yaml` without changing any pipeline code. This manages running costs effectively while keeping performance high.
 
 1. **Local Semantic Caching (LaminDB & SQLite):** Peak spectra and telemetry metadata are dynamically hashed. Repeated chromatograms or identical samples query the local cache directly, resulting in **₹0 cost** for redundant runs.
 2. **Confidence-Gated Router Logic (Gemini 2.5 Flash-Lite):** Over 90% of naming, metadata formatting, and validation tasks are initially routed to `google/gemini-2.5-flash-lite` (costing only ~₹0.010 per call). Only when the structural confidence score falls below a threshold ($C < 0.85$) does the router fallback to more expensive tiers.
@@ -64,7 +66,7 @@ To ensure feasibility for academic labs and individual researchers, CHROMA-AGENT
 | **T3-CoT** | `deepseek-r1-distill-qwen-32b` | Complex mathematical/logical reasoning, deconv audits | ~₹0.030 / call | Called only for auditing high-overlap ambiguity. |
 | **T4 Fallback** | `Claude Sonnet/Opus (local proxy)` | Final automated pipeline fallback | Capped by quota | Offline local proxy fallback to prevent billing spikes. |
 
-*Note: For manual tasks such as manuscript prose writing and PhD cover letters, the **Antigravity** proxy is the preferred option and is accessed directly.*
+*Note: The **Antigravity** proxy is used as a fallback layer for system queries and pipeline errors.*
 
 ---
 
@@ -186,25 +188,17 @@ CHROMA-AGENT-ALPHA is designed to fill specific operational gaps left by existin
 
 ---
 
-## 6. PhD Research & Self-Driving Labs (SDL) Utility
-For academic chemistry research (particularly in the context of a PhD project), CHROMA-AGENT-ALPHA functions as a critical real-time telemetry processing layer for closed-loop self-driving laboratories:
+## 6. Self-Driving Labs (SDL) Utility
+CHROMA-AGENT-ALPHA functions as a critical real-time telemetry processing layer for closed-loop self-driving laboratories:
 - **Continuous-Flow Reactor Coupling:** The pipeline can be coupled directly to automated continuous-flow reactors. By processing and deconvolving overlapping chromatograms in real-time (under 12 seconds), it feeds accurate product concentrations directly to Bayesian optimization loops (e.g., Summit, Olympus) without manual intervention.
 - **Error Propagation Mitigation:** Standard integration tools introduce up to 48% area double-counting error in overlapping peaks. This propagates massive errors into reaction yield calculations, throwing off Bayesian optimization. CHROMA-AGENT-ALPHA reduces this error to <5%, accelerating optimal reaction condition discovery by up to 3x.
 - **FAIR Compliance in High-Throughput Screening:** In automated synthesis, thousands of raw runs are generated. CHROMA-AGENT-ALPHA’s automatic Zarr compression and LaminDB database entry ensure metadata traceability is preserved out-of-the-box, fulfilling institutional FAIR requirements.
 
-## 7. Publications & Academic Target
-This pipeline is documented in the manuscript:
-*   *Agentic Orchestration for Automated Chromatography: A Tiered AI Framework for Lab 4.0 Telemetry* (Target Journal: **SLAS Technology**, submission planned October 2026).
-
 ---
 
-## 8. Future Roadmap: Predictive Chromatogram Simulation
+## 7. Future Roadmap: Predictive Chromatogram Simulation
 To transition `CHROMA-AGENT-ALPHA` from a post-run processing pipeline to an active, closed-loop decision engine, the future development roadmap targets the integration of an in-silico chromatogram simulator:
 - **Physics-Informed Hybrid Modeling (GNN-QSPR):** A Graph Neural Network (GNN) will predict thermodynamic interaction constants (\(\Delta H_{\text{vap}}\) and \(\Delta S_{\text{vap}}\)) directly from molecular SMILES graphs (enabling simulation of unseen, newly synthesized compounds). These constants feed into dynamic capillary flow (Poiseuille) and retention (Clausius-Clapeyron) solver matrices.
 - **Active Method Development Loop:** If the GNN deconvolution stage detects overlapping peaks with a resolution \(R_s < 1.0\) that cannot be mathematically resolved, the agent will simulate alternative oven temperature ramps and flow rates to physically separate the compounds in a subsequent injection.
 - **Autonomous Method Translation & Flow Calibration:** Integrates translation algorithms (Blumberg scaling theory) to automatically adapt GC parameters when switching carrier gases (e.g., Helium to Hydrogen) or scaling column dimensions, ensuring vendor-agnostic method portability.
-- **Dormant Blueprint Ready:** The physical solvers and model architecture skeleton are laid out in [gc_modeler.py](file:///C:/chroma-agent-alpha/scripts/gc_modeler.py) and are prepared for validation during the 2027 PhD phase.
-
----
-
-*Built by [Devendra Kataria](https://www.linkedin.com/in/devendra-kataria/) — MSc Chemistry (82%), Technical Lead & Informatics Researcher.*
+- **Dormant Blueprint Ready:** The physical solvers and model architecture skeleton are laid out in [gc_modeler.py](file:///C:/chroma-agent-alpha/scripts/gc_modeler.py) and are prepared for future validation phases.
