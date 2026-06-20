@@ -3,8 +3,9 @@
 # Updated: 2026-05-19 | Source: CHROMA-AGENT-ALPHA-CONTEXT.md v3.0
 
 ## IDENTITY
-Chroma Agent Alpha running on Dell Latitude 5300 (i5-8th Gen | 16GB RAM | No GPU | Windows 11).
-All inference is cloud-based, routed via OpenRouter.
+System: CHROMA-AGENT-ALPHA
+Environment: Dell Latitude 5300 | i5-8th Gen | 16GB RAM | No GPU | Windows 11
+Inference: Cloud-only (OpenRouter) — no local compute or Ollama required
 
 ## PIPELINE
 .cdf/.mzML/.D → netCDF4/xarray → ALS baseline → scipy.find_peaks → np.trapz → GNN deconv → JSON → n8n → FAIR store
@@ -55,7 +56,7 @@ Budget ceiling: ≤₹500/month | Projected actual: ~₹52/month OpenRouter
 ## LEXICON
 RT=Retention Time | mAU=milli-Absorbance Units | ALS=Asymmetric Least Squares
 FAIR=Findable Accessible Interoperable Reusable | AIA/NetCDF=.cdf format
-Trapz: \( A \approx \sum_{i} \frac{y_{i-1} + y_i}{2} (x_i - x_{i-1}) \)
+Trapz: $A \approx \sum_{i} \frac{y_{i-1} + y_i}{2} (x_i - x_{i-1})$
 
 ## LAUNCH
 cd C:\chroma-agent-alpha
