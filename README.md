@@ -155,7 +155,7 @@ Compared against standard SciPy peak integration (which double-counts signals in
 
 | Dataset | Total Peaks | Co-eluting Peaks | Avg GNN Purity | Raw Area (mAU·min) | Corrected Area (mAU·min) | Overlap Error Corrected |
 |---|---|---|---|---|---|---|
-| **FAME Mix 30** | 23 | 22 | 0.576 | 948.52 | 485.84 | **48.8%** |
+| **FAME Mix 30** | 23 | 22 | 0.576 | 948.52 | 485.84 | **46.1% to 48.8%** |
 | **PE-2 (Polymer)** | 286 | 286 | 0.518 | 1,924,763.54 | 1,037,703.85 | **46.1%** |
 | **PE-5 (Polymer)**| 178 | 178 | 0.524 | 2,236,502.54 | 1,155,426.75 | **48.3%** |
 
@@ -194,7 +194,7 @@ CHROMA-AGENT-ALPHA is designed to fill specific operational gaps left by existin
 ## 6. Self-Driving Labs (SDL) Utility
 CHROMA-AGENT-ALPHA functions as a critical real-time telemetry processing layer for closed-loop self-driving laboratories:
 - **Continuous-Flow Reactor Coupling:** The pipeline can be coupled directly to automated continuous-flow reactors. By processing and deconvolving overlapping chromatograms in real-time (under 12 seconds), it feeds accurate product concentrations directly to Bayesian optimization loops (e.g., Summit, Olympus) without manual intervention.
-- **Error Propagation Mitigation:** Standard integration tools introduce up to 48% area double-counting error in overlapping peaks. This propagates massive errors into reaction yield calculations, throwing off Bayesian optimization. CHROMA-AGENT-ALPHA reduces this error to <5%, accelerating optimal reaction condition discovery by up to 3x.
+- **Error Propagation Mitigation:** Standard integration tools introduce significant area double-counting errors in overlapping peaks (of which 46.1% to 48.8% of these double-counting errors are resolved by our GCN deconvolution), propagating noise into reaction yield calculations that can throw off Bayesian optimization.
 - **FAIR Compliance in High-Throughput Screening:** In automated synthesis, thousands of raw runs are generated. CHROMA-AGENT-ALPHA’s automatic Zarr compression and LaminDB database entry ensure metadata traceability is preserved out-of-the-box, fulfilling institutional FAIR requirements.
 
 ---

@@ -58,7 +58,7 @@ RAW DATA (.cdf / .mzML / .D / .RAW)
         ↓
 [T3] Peak detection → np.trapezoid area quantification
         ↓
-[T4] GNN deconvolution (torch-geometric) ← DONE (reduces overlap errors by 48.8%)
+[T4] GNN deconvolution (torch-geometric) ← DONE (reduces overlap errors by 46.1% to 48.8%)
         ↓
 [T5] matchms spectral matching → compound ID
         ↓
@@ -203,7 +203,7 @@ To stay under the **₹500/month** limit, a strict budget model is enforced:
 | **ALS Baseline Correction** | **✓ DONE** | Implemented in [baseline_als.py](file:///C:/chroma-agent-alpha/baseline_als.py) and verified. |
 | **Peak Detection & Area** | **✓ DONE** | Integrated in [peak_detect.py](file:///C:/chroma-agent-alpha/peak_detect.py) using `np.trapezoid`. |
 | **n8n Automation** | **✓ DONE** | Folder watchdog script initiates runs on new file ingestion. |
-| **GNN Deconvolution** | **✓ DONE** | 1D GCN node classifier + EMG fitting reduces area double-counting errors by 48.8% in under 12 seconds. Implemented in [gnn_deconv.py](file:///C:/chroma-agent-alpha/gnn_deconv.py). |
+| **GNN Deconvolution** | **✓ DONE** | 1D GCN node classifier + EMG fitting reduces area double-counting errors by 46.1% to 48.8% in under 12 seconds. Implemented in [gnn_deconv.py](file:///C:/chroma-agent-alpha/gnn_deconv.py). |
 | **Spectral Matching** | **✓ DONE** | Implemented in [spectral_match.py](file:///C:/chroma-agent-alpha/spectral_match.py) with GNPS reference library. |
 | **FAIR Layer (Zarr / LaminDB)** | **✓ DONE** | Zarr v3 outputs and LaminDB lineage database tracking fully operational. Verified via [test_real_data_pipeline.py](file:///C:/chroma-agent-alpha/tests/test_real_data_pipeline.py). |
 | **GC-MS Modeler Blueprint** | **✓ DONE** | Dormant physical chromatogram modeler blueprint created in [gc_modeler.py](file:///C:/chroma-agent-alpha/scripts/gc_modeler.py). |
@@ -221,7 +221,7 @@ Frame the analytical chemist as a **Digital/Dry-Lab Architect** who directs auto
 - **Abstract:** ~250 words. Focuses on bridging AI pipelines and analytical instrumentation.
 - **Introduction:** Outlines the self-driving lab (SDL) landscape and gaps in existing tools (CADET, PeakDetective, OpenMS, MOCCA).
 - **Methods:** Detailed math of the ALS baseline, EMG fitting, GCN node-classification, and tiered router economics.
-- **Results:** Empirical deconvolution performance, error reduction metrics (48.8% area correction), and runtime comparisons.
+- **Results:** Empirical deconvolution performance, error reduction metrics (46.1% to 48.8% area correction), and runtime comparisons.
 - **Discussion:** Cost governance (₹52/month), low-code agentic accessibility, and FAIR data lineage benefits.
 - **References:** Vancouver format.
 
@@ -230,7 +230,7 @@ Frame the analytical chemist as a **Digital/Dry-Lab Architect** who directs auto
 ## 10. PhD POSITION TARGET MATRIX (2027 COHORT)
 
 ### Core Positioning Narrative
-*"I built an open-source, AI-driven chromatography pipeline (CHROMA-AGENT-ALPHA) that automates peak deconvolution using GNNs, reducing area integration errors by 48.8%. I want to extend this closed-loop optimization to self-driving labs and flow chemistry systems in your group."*
+*"I built an open-source, AI-driven chromatography pipeline (CHROMA-AGENT-ALPHA) that automates peak deconvolution using GNNs, reducing area integration errors by 46.1% to 48.8%. I want to extend this closed-loop optimization to self-driving labs and flow chemistry systems in your group."*
 
 ### Targets Matrix
 
@@ -296,7 +296,7 @@ When using your phone to ask general questions or study, use this checklist to g
 1. **Explain the Varian/Agilent Parser:** "Explain how to decode little-endian float arrays from binary offsets in Agilent `.ch` v817 or Varian `.xms` files in Python."
 2. **Explain GNN Peak Deconvolution:** "How does a Graph Convolutional Network (GCN) coupled with Exponentially Modified Gaussian (EMG) curve fitting resolve co-eluting peaks?"
 3. **Discuss Bayesian Optimization in Flow Labs:** "How do measurement/peak integration errors propagate to Gaussian Process Upper Confidence Bound (GP-UCB) acquisition functions in a self-driving lab?"
-4. **Draft PI Emails:** "Draft an outreach email to Timothy Noël about autonomous flow chemistry platforms using RoboChem, linking my GNN peak deconvolution results (48.8% error correction)."
+4. **Draft PI Emails:** "Draft an outreach email to Timothy Noël about autonomous flow chemistry platforms using RoboChem, linking my GNN peak deconvolution results (46.1% to 48.8% error correction)."
 
 ---
 

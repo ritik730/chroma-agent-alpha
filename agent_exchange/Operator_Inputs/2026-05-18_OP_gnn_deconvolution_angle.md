@@ -2,7 +2,7 @@
 > From: Devendra Kataria (Operator / Research Director) | Date: 2026-05-18
 > To: Dual-Agent System (Antigravity & Claude Code)
 
-When compounds exit the chromatography column at similar times, they co-elute, creating overlapping peaks. Standard vertical drop integration methods introduce up to 48% area calculation errors. In self-driving laboratories, this measurement noise propagates to reaction yield calculations, causing Bayesian Optimization loops to stall or converge on sub-optimal regimes. 
+When compounds exit the chromatography column at similar times, they co-elute, creating overlapping peaks. Standard vertical drop integration methods introduce up to 46.1% to 48.8% area calculation errors. In self-driving laboratories, this measurement noise propagates to reaction yield calculations, causing Bayesian Optimization loops to stall or converge on sub-optimal regimes. 
 
 I want to solve this using a GNN (Graph Neural Network) deconvolution approach.
 

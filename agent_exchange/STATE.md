@@ -13,7 +13,7 @@
 - **Peak Detection**: ✓ DONE — Integrated in [scripts/peak_detect.py](file:///C:/chroma-agent-alpha/scripts/peak_detect.py) using `np.trapezoid` area integration.
 - **n8n Trigger**: ✓ DONE — Folder-watch script triggers FastAPI server.
 - **matchms Spectral Matching**: ✓ DONE — Implemented in [scripts/spectral_match.py](file:///C:/chroma-agent-alpha/scripts/spectral_match.py).
-- **GNN Deconvolution**: ✓ DONE — 1D GCN node classifier + EMG fitting in [scripts/gnn_deconv.py](file:///C:/chroma-agent-alpha/scripts/gnn_deconv.py) (reduces overlap errors by 48.8% in under 12 seconds).
+- **GNN Deconvolution**: ✓ DONE — 1D GCN node classifier + EMG fitting in [scripts/gnn_deconv.py](file:///C:/chroma-agent-alpha/scripts/gnn_deconv.py) (reduces overlap errors by 46.1% to 48.8% in under 12 seconds).
 - **Dashboard Control Center**: ✓ DONE — Built in [scripts/dashboard.html](file:///C:/chroma-agent-alpha/scripts/dashboard.html).
 - **zarr + lamindb FAIR Layer**: ✓ DONE — Data lineage database registry verified via [scripts/test_real_data_pipeline.py](file:///C:/chroma-agent-alpha/scripts/test_real_data_pipeline.py).
 - **SLAS Manuscript**: ✓ POLISHED — Draft Complete at [SLAS_Technology_Manuscript_Draft.md](file:///C:/Users/yaduv/Desktop/PhD%20Roadmap/01_Manuscripts_and_Reports/SLAS_Technology_Manuscript_Draft.md).
