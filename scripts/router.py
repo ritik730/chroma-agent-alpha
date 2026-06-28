@@ -1,7 +1,7 @@
 """
 Chroma-Agent-Alpha Python Router v2
 Routes chromatography pipeline tasks to correct model tier.
-T1=Ollama local | T2=OpenRouter free | T3=OpenRouter paid
+T1=OpenRouter Gemini/Llama | T2=OpenRouter free | T3=OpenRouter paid
 Bug fixed: _call_openrouter now passes headers and json separately.
 """
 import os, requests
@@ -9,7 +9,6 @@ from dotenv import load_dotenv
 
 load_dotenv(dotenv_path=r"C:\chroma-agent-alpha\.env")
 
-OLLAMA_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OR_URL     = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
 OR_KEY     = os.getenv("OPENROUTER_API_KEY", "")
 
@@ -48,17 +47,6 @@ def route(task: str, prompt: str, system: str = None) -> dict:
     print(f"[ROUTER] {task} → {tier.upper()} | {model}")
     return _call_openrouter(model, prompt, system, tier=tier)
 
-def _call_ollama(model: str, prompt: str, system: str = None) -> dict:
-    """T1: local Ollama. Zero cost. Chromatography data stays on-device."""
-    msgs = []
-    if system: msgs.append({"role": "system", "content": system})
-    msgs.append({"role": "user", "content": prompt})
-    r = requests.post(f"{OLLAMA_URL}/api/chat",
-                      json={"model": model, "messages": msgs, "stream": False},
-                      timeout=120)
-    r.raise_for_status()
-    text = r.json()["message"]["content"]
-    return {"tier": "T1", "model": model, "response": text, "cost_inr": 0}
 
 def _call_openrouter(model: str, prompt: str, system: str = None, tier: str = "T2/T3") -> dict:
     """T1/T2/T3: OpenRouter. Fully migrated pipeline."""
