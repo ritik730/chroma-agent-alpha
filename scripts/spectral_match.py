@@ -436,7 +436,7 @@ def match_peaks(peaks_data: dict, library: list[Spectrum]) -> dict:
     )
     # Limit query to top N peaks to prevent excessive API costs and pipeline hangs
     disable_llm = os.environ.get("CHROMA_DISABLE_LLM_MATCH", "false").lower() == "true"
-    limit_llm = int(os.environ.get("CHROMA_LIMIT_LLM_PEAKS", "5"))
+    limit_llm = int(os.environ.get("CHROMA_LIMIT_LLM_PEAKS", "100"))
     if disable_llm:
         unmatched_peaks_to_query = []
     else:

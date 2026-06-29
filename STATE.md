@@ -1,10 +1,10 @@
 # GSD Persistent State Map — CHROMA-AGENT-ALPHA
 
 ## Current Project Phase
-- **Phase**: Technical Implementation & Pipeline Verification
-- **Status**: Stable & Verified Bug-Free
-- **Active Task**: Created an interactive Windows installer (`install.cmd` and `install.ps1`) to automate Python venv creation, `.env` generation, and n8n global checks. Configured folder junction linkage (`mklink /J`) between `raw_data` and raw instrument outputs. Placed `Start_All_Chroma_Services.cmd` and `Stop_All_Chroma_Services.cmd` shortcuts on the Desktop. Documented Python 3.10-3.12 compatibility constraints due to `numba`/`matchms` package builds failing on Python 3.13+. Imported Macro-to-Micro agent exchange context logs into the repository at `agent_exchange/`. Committed and pushed all upgrades to GitHub.
-- **Future Modeler Integration**: Created dormant physical GC-MS chromatogram modeler blueprint in [gc_modeler.py](file:///C:/chroma-agent-alpha/scripts/gc_modeler.py) for future validation.
+- **Phase**: UI Optimization & Peak Identification Enhancement
+- **Status**: Stable & Verified
+- **Active Task**: Fixed progress panel dismissal in `dashboard.html` to keep the 4-stage process indicator cards visible when closing the status bar. Lifted the LLM fallback peak query cap by changing the default limit from 5/10 to 100 in `spectral_match.py` and `pipeline_server.py`, and added `CHROMA_LIMIT_LLM_PEAKS=100` to `.env`. Verified that all 35 peaks in `MC-10A-NF205-05-2018.xms` are successfully queried and identified, increasing the identification rate from 42.9% to 97.1%.
+
 
 
 

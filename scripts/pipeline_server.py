@@ -390,7 +390,7 @@ def run_enrich(req: EnrichRequest, username: str = Depends(authenticate_user)):
     )
     
     # Limit to top N peaks to prevent huge number of API calls and timeouts
-    limit_enrich = int(os.environ.get("CHROMA_LIMIT_LLM_PEAKS", "10"))
+    limit_enrich = int(os.environ.get("CHROMA_LIMIT_LLM_PEAKS", "100"))
     peaks_to_enrich = peaks_to_enrich[:limit_enrich]
     
     chunk_size = 15
