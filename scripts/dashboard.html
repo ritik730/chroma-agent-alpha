@@ -1608,6 +1608,7 @@
 
             showLoader(true, 'Fetching pipeline results...');
             log(`Loading sample run: ${sampleId}...`, 'info');
+            document.getElementById('peaks-table-body').innerHTML = '<tr><td colspan="15" style="text-align: center; color: var(--text-muted); padding: 2rem;">Loading data...</td></tr>';
 
             // Reset manual stage buttons inside watcher cards
             const btnDeconv = document.getElementById('btn-deconv');

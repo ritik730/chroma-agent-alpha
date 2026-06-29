@@ -234,8 +234,8 @@ def upload_file(file: UploadFile = File(...), username: str = Depends(authentica
 
     safe_filename = sanitize_filename(filename)
 
-    # Enforce 50 MB size limit
-    MAX_SIZE = 50 * 1024 * 1024
+    # Enforce 300 MB size limit
+    MAX_SIZE = 300 * 1024 * 1024
     try:
         file.file.seek(0, 2)
         size = file.file.tell()
@@ -243,7 +243,7 @@ def upload_file(file: UploadFile = File(...), username: str = Depends(authentica
         if size > MAX_SIZE:
             raise HTTPException(
                 status_code=400,
-                detail=f"File too large. Maximum upload size is 50 MB. Uploaded size: {size / (1024*1024):.2f} MB"
+                detail=f"File too large. Maximum upload size is 300 MB. Uploaded size: {size / (1024*1024):.2f} MB"
             )
     except Exception as size_err:
         if isinstance(size_err, HTTPException):
@@ -434,11 +434,13 @@ Return ONLY a JSON array: [{{"peak_index": 337, "compound_class": "...", "compou
         # Fallback configs to try for this chunk: (type, model_name, timeout)
         # Prioritize fast, high-availability, non-thinking proxy models to avoid timeouts and rate-limit issues
         models_to_try = [
-            ("proxy", "gemini-2.5-flash", 60),
-            ("proxy", "gemini-2.5-pro", 90),
-            ("proxy", antigravity_model, 120),
-            ("proxy", "gemini-3-flash-agent", 60),
-            ("litellm", "claude-t2", 45),
+            ("proxy", "gemini-2.5-flash", 20),
+            ("proxy", "gemini-2.5-flash-lite", 20),
+            ("proxy", "gemini-3-flash-agent", 20),
+            ("proxy", "gemini-3.5-flash-low", 20),
+            ("proxy", "gemini-2.5-pro", 30),
+            ("proxy", antigravity_model, 45),
+            ("litellm", "claude-t2", 20),
         ]
         
         for source, model_name, current_timeout in models_to_try:

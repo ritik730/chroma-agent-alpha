@@ -1,12 +1,13 @@
 # GSD Persistent State Map — CHROMA-AGENT-ALPHA
 
 ## Current Project Phase
-- **Phase**: UI Optimization & Peak Identification Enhancement
+- **Phase**: UI Optimization & Pipeline Robustness
 - **Status**: Stable & Verified
-- **Active Task**: Fixed progress panel dismissal in `dashboard.html` to keep the 4-stage process indicator cards visible when closing the status bar. Lifted the LLM fallback peak query cap by changing the default limit from 5/10 to 100 in `spectral_match.py` and `pipeline_server.py`, and added `CHROMA_LIMIT_LLM_PEAKS=100` to `.env`. Verified that all 35 peaks in `MC-10A-NF205-05-2018.xms` are successfully queried and identified, increasing the identification rate from 42.9% to 97.1%.
-
-
-
+- **Active Task**:
+  1. Increased file upload limit in `pipeline_server.py` to `300 MB`, enabling large instrument raw files (e.g. `131221ajcsa23_1.cdf`) to upload and list in the UI.
+  2. Optimized model fallback configurations (`models_to_try`) to prioritize fast, high-availability flash models (`gemini-2.5-flash-lite`, `gemini-3-flash-agent`, `gemini-3.5-flash-low`) and shortened individual timeouts to `20s`, preventing pipeline hangs during rate limits.
+  3. Fixed a UI glitch in `dashboard.html` by clearing the peaks table body and showing a loading indicator during run changes.
+  4. Successfully ran AI enrichment for `test_lavender_mix` (106 peaks) through the local proxy, resolving peak 1256 from `unidentified` to `Eucalyptol`.
 
 ---
 
@@ -22,6 +23,8 @@
   - Configuration: `C:\chroma-agent-alpha\litellm_config.yaml`
 - **n8n Instance**:
   - URL: `http://localhost:5678`
+- **Antigravity Claude Proxy**:
+  - URL: `http://localhost:8080`
 
 ---
 

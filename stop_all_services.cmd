@@ -15,7 +15,11 @@ echo [3/4] Stopping Chromatography Pipeline Server (python.exe)...
 powershell -Command "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*pipeline_server.py*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }" >nul 2>&1
 
 echo [4/4] Stopping Antigravity Claude Proxy...
-call acc stop >nul 2>&1
+if exist "%USERPROFILE%\AppData\Roaming\npm\acc.cmd" (
+    call "%USERPROFILE%\AppData\Roaming\npm\acc.cmd" stop >nul 2>&1
+) else (
+    call acc stop >nul 2>&1
+)
 
 
 echo.

@@ -13,7 +13,11 @@ echo [1/4] Checking Antigravity Claude Proxy on port 8080...
 netstat -ano | findstr :8080 | findstr LISTENING >nul
 if %errorlevel% neq 0 (
     echo Starting Antigravity Claude Proxy...
-    call acc start
+    if exist "%USERPROFILE%\AppData\Roaming\npm\acc.cmd" (
+        call "%USERPROFILE%\AppData\Roaming\npm\acc.cmd" start
+    ) else (
+        call acc start
+    )
 ) else (
     echo Antigravity Claude Proxy is already running.
 )
